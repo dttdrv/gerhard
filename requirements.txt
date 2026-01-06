@@ -1,0 +1,27 @@
+# ASNN-Goose Prototype Dependencies
+# Target: Kaggle T4 GPU (16GB VRAM)
+
+# Core ML
+torch>=2.0.0
+numpy>=1.24.0
+
+# Data
+datasets>=2.14.0
+transformers>=4.30.0
+tokenizers>=0.13.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Utilities
+tqdm>=4.65.0
+pyyaml>=6.0
+
+# Jupyter
+jupyterlab>=4.0.0
+ipywidgets>=8.0.0
+
+# Testing
+pytest>=7.3.0
+pytest-cov>=4.1.0
