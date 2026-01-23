@@ -1,71 +1,80 @@
-# ASNN-Goose: Adaptive Spiking Neural Network with Goose Backbone
+# ASNN-Goose: Adapted Spiking Neural Network
 
-A research prototype for Eptesicus Laboratories (Lumis-NEXT initiative).
+Distilling GPT-2 into a ternary-activation RWKV model for GPU-efficient inference.
 
-## Overview
+## Current Status
 
-ASNN-Goose combines:
-1. **RWKV-style recurrence** (Goose backbone) with delta-rule state updates
-2. **Ternary spiking activations** ({-1, 0, +1}) replacing continuous activations
-3. **Static weight quantization** (INT8)
-4. **Memory-locked test-time training (TTT)** via LoRA adapters
+| Metric | Value |
+|--------|-------|
+| Best PPL | 306.89 (v14.3) |
+| Teacher PPL | 44.6 (GPT-2) |
+| Gap | 6.9x |
+| Parameters | 74M |
+| Architecture | d=768, 5 layers |
+
+## Core Idea
+
+Ternary activations {-1, 0, +1} convert multiplications to additions/subtractions:
+- `+1`: add weight
+- `-1`: subtract weight
+- `0`: skip entirely
+
+This enables computational shortcuts unavailable to continuous networks.
+
+## Key Innovations
+
+1. **CTKD**: Curriculum Temperature KD with Gradient Reversal Layer
+2. **FDD**: Feature Dynamics Distillation using CKA loss
+3. **SpikingBrain**: Information encoding validation
 
 ## Project Structure
 
 ```
 asnn-goose-prototype/
-├── config.py               # All hyperparameters
+├── notebooks/          # Colab/Kaggle notebooks (v6-v15)
 ├── src/
-│   ├── models/             # Core model components
-│   ├── training/           # Training infrastructure
-│   ├── evaluation/         # Evaluation and analysis
-│   ├── kernels/            # Kernel-level analysis
-│   └── utils/              # Utilities
-├── notebooks/              # Experiment notebooks
-├── outputs/                # Figures, checkpoints, logs
-└── tests/                  # Unit tests
+│   ├── models/         # ASNN-Goose architecture
+│   ├── training/       # Distillation infrastructure
+│   ├── evaluation/     # SpikingBrain validation
+│   └── utils/          # Visualization, checkpoints
+├── knowledge/
+│   ├── overview.md     # Project overview
+│   └── roadmap.md      # Version history and roadmap
+└── changelog.md        # Detailed version changelog
 ```
+
+## Roadmap
+
+| Version | Status | Focus |
+|---------|--------|-------|
+| v14.3 | DONE | PPL 306.89 (current best) |
+| v15 | IN PROGRESS | SpikingBrain validation |
+| v16 | PLANNED | Sparse operations |
+| v17 | PLANNED | Efficiency benchmarks |
+| v18 | PLANNED | Ablation studies |
+| v19 | PLANNED | Publication |
 
 ## Quick Start
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run notebooks in order
-jupyter lab notebooks/
+# Run on Colab/Kaggle
+# Upload notebooks/asnn_goose_colab_v15.ipynb
+# Enable GPU runtime
+# Run all cells
 ```
 
-## Hardware Target
+## Hardware
 
-- Kaggle T4 GPU (16GB VRAM, Turing architecture with Tensor Cores)
-- ~30 GPU hours/week budget
-
-## Key Experiments
-
-1. **Baseline Teacher**: Train dense Goose model
-2. **Ternary Ablation**: Compare fixed vs adaptive thresholds
-3. **Distillation**: Train ASNN-Goose student
-4. **TTT Evaluation**: Test trigger logic and drift controls
-5. **Kernel Analysis**: Measure sparsity benefits
-6. **Full Evaluation**: Publication-ready results
-
-## Configuration
-
-All hyperparameters are centralized in `config.py`. Key settings:
-
-- `d_model`: 256 (hidden dimension)
-- `n_layers`: 4 (recurrent layers)
-- `ternary_threshold_init`: 0.5
-- `lora_rank`: 8
-- `weight_bits`: 8 (INT8)
+- Target: Kaggle T4 (16GB VRAM)
+- Training: ~4 hours for full run
+- VRAM: ~3-6GB peak
 
 ## Citation
 
 ```bibtex
-@article{asnn-goose-2024,
-  title={ASNN-Goose: Adaptive Spiking Neural Networks with RWKV-style Recurrence},
+@article{asnn-goose-2026,
+  title={ASNN-Goose: Adapted Spiking Neural Networks with RWKV-style Recurrence},
   author={Eptesicus Laboratories},
-  year={2024}
+  year={2026}
 }
 ```
