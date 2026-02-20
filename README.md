@@ -1,80 +1,54 @@
-# ASNN-Goose: Adapted Spiking Neural Network
+# ASNN-Goose
 
-Distilling GPT-2 into a ternary-activation RWKV model for GPU-efficient inference.
+Shrunk GPT-2 (124M) into a 74M spiking model that runs fine on regular GPUs. Ternary activations (-1, 0, +1) plus RWKV recurrence.
 
-## Current Status
+## Why bother
 
-| Metric | Value |
-|--------|-------|
-| Best PPL | 306.89 (v14.3) |
-| Teacher PPL | 44.6 (GPT-2) |
-| Gap | 6.9x |
-| Parameters | 74M |
-| Architecture | d=768, 5 layers |
+LLMs work great but burn cash and watts. ASNN-Goose keeps most of the smarts while slashing compute. No fancy neuromorphic chips needed.
 
-## Core Idea
+## How
 
-Ternary activations {-1, 0, +1} convert multiplications to additions/subtractions:
-- `+1`: add weight
-- `-1`: subtract weight
-- `0`: skip entirely
+- Neurons fire -1, 0, or +1. Multiplications turn into cheap adds, subs, or nothing.
+- RWKV recurrence carries a tiny state instead of re-reading the whole context each token.
+- Curriculum-temperature distillation plus CKA feature matching teaches the small net both outputs and internals from GPT-2.
+- SpikingBrain checks that the spikes actually mean something.
 
-This enables computational shortcuts unavailable to continuous networks.
+## Numbers (Feb 2026)
 
-## Key Innovations
+- Best perplexity: 306.89 (v14.3)
+- Teacher GPT-2: 44.6
+- 74M params, 5 layers
+- Train time: ~4h on a Kaggle T4
+- Peak VRAM: 3–6 GB
 
-1. **CTKD**: Curriculum Temperature KD with Gradient Reversal Layer
-2. **FDD**: Feature Dynamics Distillation using CKA loss
-3. **SpikingBrain**: Information encoding validation
+## Repo
 
-## Project Structure
-
-```
-asnn-goose-prototype/
-├── notebooks/          # Colab/Kaggle notebooks (v6-v15)
-├── src/
-│   ├── models/         # ASNN-Goose architecture
-│   ├── training/       # Distillation infrastructure
-│   ├── evaluation/     # SpikingBrain validation
-│   └── utils/          # Visualization, checkpoints
-├── knowledge/
-│   ├── overview.md     # Project overview
-│   └── roadmap.md      # Version history and roadmap
-└── changelog.md        # Detailed version changelog
-```
+- notebooks/ — Colab/Kaggle runs (v6–v15)
+- src/ — models, train, eval, utils
+- knowledge/ — plain roadmaps
+- changelog.md — what changed when
 
 ## Roadmap
 
-| Version | Status | Focus |
-|---------|--------|-------|
-| v14.3 | DONE | PPL 306.89 (current best) |
-| v15 | IN PROGRESS | SpikingBrain validation |
-| v16 | PLANNED | Sparse operations |
-| v17 | PLANNED | Efficiency benchmarks |
-| v18 | PLANNED | Ablation studies |
-| v19 | PLANNED | Publication |
+- v15 — full SpikingBrain test
+- v16 — sparse ops
+- v17 — speed benchmarks
+- v18 — ablations
+- v19 — paper, done
 
-## Quick Start
+## Quick start
 
-```bash
-# Run on Colab/Kaggle
-# Upload notebooks/asnn_goose_colab_v15.ipynb
-# Enable GPU runtime
-# Run all cells
-```
+Open the newest notebook in Colab/Kaggle, flip GPU on, run.
 
-## Hardware
+## Who wants it
 
-- Target: Kaggle T4 (16GB VRAM)
-- Training: ~4 hours for full run
-- VRAM: ~3-6GB peak
+Anyone playing with efficient spikes on normal hardware, devs who need small models, or folks curious about practical brain-style AI.
 
-## Citation
+## Scope note
 
-```bibtex
-@article{asnn-goose-2026,
-  title={ASNN-Goose: Adapted Spiking Neural Networks with RWKV-style Recurrence},
-  author={Eptesicus Laboratories},
-  year={2026}
-}
-```
+ASNN = Adapted Spiking Neural Network. GPU-first today. Partners with SpikySpace for future neuromorphic chips.
+
+
+
+
+follow me on X: x.com/dttdrv
