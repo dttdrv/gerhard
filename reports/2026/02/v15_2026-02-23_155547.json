@@ -1,0 +1,79 @@
+{
+  "run_id": "v15_2026-02-23_155547",
+  "timestamp_utc": "2026-02-23T16:37:58.049159Z",
+  "commit": "unknown",
+  "phase": "B",
+  "phase_name": "B_v15_spikingbrain_validation",
+  "executive_summary": {
+    "what_changed": [
+      "Notebook run outputs archived and evaluated."
+    ],
+    "overall_gate_outcome": "PAUSE_NEEDS_INPUT",
+    "risks": [],
+    "next_autonomous_action": "Address red gates and provide the requested outputs in the needs_input report.",
+    "user_input_required": "yes"
+  },
+  "metric_deltas": [],
+  "gate_scorecard": [
+    {
+      "gate_name": "required_artifacts_presence",
+      "status": "green",
+      "observed": "all required artifacts present",
+      "threshold": "all required artifacts must exist",
+      "delta_vs_baseline": "n/a",
+      "notes": "pass"
+    },
+    {
+      "gate_name": "phase_b_artifacts_presence",
+      "status": "green",
+      "observed": "all phase-specific artifacts present",
+      "threshold": "all phase-specific artifacts must exist",
+      "delta_vs_baseline": "n/a",
+      "notes": "pass"
+    },
+    {
+      "gate_name": "metrics_numerical_sanity",
+      "status": "green",
+      "observed": "numeric values finite in inspected JSON artifacts",
+      "threshold": "all numeric values must be finite",
+      "delta_vs_baseline": "n/a",
+      "notes": "pass"
+    },
+    {
+      "gate_name": "phase_b_scientific_thresholds",
+      "status": "red",
+      "observed": "dead_neuron_pct=0.1133 > 0.05; mutual_information=0.0146 <= 0.10; cka_mean=0.0171 <= 0.30",
+      "threshold": "dead<0.05, sat<0.10, mi>0.10, cka>0.30, firing_rate in [0.20,0.60]",
+      "delta_vs_baseline": "n/a",
+      "notes": "phase B scientific criteria not met"
+    }
+  ],
+  "artifacts": [
+    "outputs/v15_2026-02-23_155547/config.yaml",
+    "outputs/v15_2026-02-23_155547/eval_suite.json",
+    "outputs/v15_2026-02-23_155547/figures_detailed/01_loss_components.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/02_loss_components_log.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/03_total_loss_smoothed.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/04_ppl_curve.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/05_learning_rate.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/06_temperature.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/08_spike_density_per_layer.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/09_spike_amplitude_per_layer.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/10_overall_spike_density_timeline.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/11_ttt_loss.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/12_validation_tests.png",
+    "outputs/v15_2026-02-23_155547/figures_detailed/13_hardware_summary.png",
+    "outputs/v15_2026-02-23_155547/metrics.json",
+    "outputs/v15_2026-02-23_155547/results.json",
+    "outputs/v15_2026-02-23_155547/run_dossier_v15_2026-02-23_155547.html",
+    "outputs/v15_2026-02-23_155547/seed.txt",
+    "outputs/v15_2026-02-23_155547/v15_spikingbrain.json"
+  ],
+  "decision": "PAUSE_NEEDS_INPUT",
+  "next_steps": [
+    "Address red gates and provide the requested outputs in the needs_input report."
+  ],
+  "needs_user_input": [
+    "Phase B failed scientific thresholds. Provide a new run after model/config changes."
+  ]
+}

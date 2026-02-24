@@ -1,0 +1,43 @@
+version: v0.1
+description: "Generalist evaluation suite scaffold (Phase A/H)."
+
+tasks:
+  - name: ppl
+    metric: ppl
+    enabled: true
+    gate:
+      type: "lower_is_better"
+      threshold: null
+      note: "Set once baseline is established."
+
+  - name: instruction_following
+    metric: pass_rate
+    enabled: true
+    gate:
+      type: "higher_is_better"
+      threshold: null
+      note: "Set once baseline is established."
+
+  - name: code
+    metric: pass_rate
+    enabled: true
+    gate:
+      type: "higher_is_better"
+      threshold: null
+      note: "Set once baseline is established."
+
+  - name: reasoning
+    metric: pass_rate
+    enabled: true
+    gate:
+      type: "higher_is_better"
+      threshold: null
+      note: "Set once baseline is established."
+
+  - name: retrieval_grounded
+    metric: citation_correctness
+    enabled: false
+    gate:
+      type: "higher_is_better"
+      threshold: null
+      note: "Disabled until retrieval module is enabled."

@@ -1,0 +1,45 @@
+version: v0.1
+description: "Training mixture scaffold for generalist capability track (Phase A/H)."
+
+defaults:
+  curriculum:
+    start_max_context_tokens: 256
+    end_max_context_tokens: 2048
+    ramp_strategy: linear
+    notes: "Start short context, ramp longer context over training."
+
+datasets:
+  - name: general_text_placeholder
+    path: data/placeholders/general_text.jsonl
+    weight: 0.55
+    license: unknown
+    notes: "Primary language modeling source."
+    max_context_tokens: 1024
+
+  - name: instruction_placeholder
+    path: data/placeholders/instruction.jsonl
+    weight: 0.20
+    license: unknown
+    notes: "Instruction-following examples."
+    max_context_tokens: 1024
+
+  - name: code_placeholder
+    path: data/placeholders/code.jsonl
+    weight: 0.15
+    license: unknown
+    notes: "Executable coding and tool-like precision samples."
+    max_context_tokens: 1024
+
+  - name: reasoning_placeholder
+    path: data/placeholders/reasoning.jsonl
+    weight: 0.08
+    license: unknown
+    notes: "Structured reasoning tasks."
+    max_context_tokens: 768
+
+  - name: long_context_placeholder
+    path: data/placeholders/long_context.jsonl
+    weight: 0.02
+    license: unknown
+    notes: "Long-context exemplars for late curriculum stages."
+    max_context_tokens: 2048

@@ -1,0 +1,25 @@
+as_of_date: '2026-02-23'
+current_phase: B_v15_spikingbrain_validation
+phase_status:
+  A: in_progress
+  B: blocked
+  C: not_started
+  D: not_started
+  E: not_started
+  F: not_started
+  G: not_started
+  H: in_progress
+  I: in_progress
+  J: not_started
+  K: not_started
+current_best_metrics:
+  best_model_tag: v14.3
+  ppl: 306.89
+  teacher_ppl: 44.6
+  spike_density_nonzero: 0.382
+last_run_id: v15_2026-02-23_200258
+last_report_path: reports/2026/02/v15_2026-02-23_200258.md
+blocking_reason: Phase B failed scientific thresholds. Provide a new run after model/config
+  changes.
+next_autonomous_action: Address red gates and provide the requested outputs in the
+  needs_input report.

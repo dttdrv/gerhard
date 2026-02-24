@@ -1,0 +1,59 @@
+as_of_date: "2026-02-23"
+mode: "pause_on_red"
+current_pointer: 3
+queue:
+  - id: "q-001"
+    title: "Persist v15 structured artifact"
+    phase: "B"
+    status: done
+    preconditions:
+      - "patched v15 notebook uploaded to RunPod"
+      - "current v15 run completes"
+    expected_outputs:
+      - "outputs/<run_id>/v15_spikingbrain.json"
+      - "outputs/<run_id>/metrics.json"
+      - "outputs/<run_id>/eval_suite.json"
+      - "outputs/<run_id>/config.yaml"
+      - "outputs/<run_id>/seed.txt"
+    on_success_next: "q-002"
+
+  - id: "q-002"
+    title: "Generate first canonical run report pair"
+    phase: "A"
+    status: done
+    preconditions:
+      - "reporting templates present"
+      - "run artifacts available"
+    expected_outputs:
+      - "reports/<YYYY>/<MM>/<run_id>.md"
+      - "reports/<YYYY>/<MM>/<run_id>.json"
+    on_success_next: "q-003"
+
+  - id: "q-003"
+    title: "Run full v15 rerun with semantic spike patch"
+    phase: "B"
+    status: in_progress
+    preconditions:
+      - "patched v15 notebook uploaded to RunPod"
+      - "full notebook executed end-to-end"
+    expected_outputs:
+      - "outputs/<run_id>/v15_spikingbrain.json"
+      - "outputs/<run_id>/eval_suite.json"
+      - "outputs/<run_id>/metrics.json"
+      - "outputs/<run_id>/config.yaml"
+      - "outputs/<run_id>/seed.txt"
+      - "outputs/<run_id>/run_dossier_<run_id>.html"
+    on_success_next: "q-004"
+
+  - id: "q-004"
+    title: "Record accepted H baseline run"
+    phase: "H"
+    status: queued
+    preconditions:
+      - "Phase B scientific gate is green"
+      - "eval suite runnable"
+      - "mixture config finalized for baseline"
+    expected_outputs:
+      - "outputs/<run_id>/eval_suite.json"
+      - "outputs/<run_id>/eval_baselines.json"
+    on_success_next: null

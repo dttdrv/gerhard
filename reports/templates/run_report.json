@@ -1,0 +1,51 @@
+{
+  "run_id": "<run_id>",
+  "timestamp_utc": "<timestamp_utc>",
+  "commit": "<commit>",
+  "phase": "<phase>",
+  "executive_summary": {
+    "what_changed": [
+      "<change_1>",
+      "<change_2>"
+    ],
+    "overall_gate_outcome": "<overall_gate_outcome>",
+    "risks": [
+      "<risk_1>"
+    ],
+    "next_autonomous_action": "<next_action>",
+    "user_input_required": "<yes_or_no>"
+  },
+  "metric_deltas": [
+    {
+      "metric": "<metric_name>",
+      "baseline": "<baseline>",
+      "observed": "<observed>",
+      "delta": "<delta>",
+      "status": "<green|yellow|red>"
+    }
+  ],
+  "gate_scorecard": [
+    {
+      "gate_name": "<gate_name>",
+      "observed": "<observed>",
+      "threshold": "<threshold>",
+      "status": "<green|yellow|red>",
+      "notes": "<notes>"
+    }
+  ],
+  "artifacts": [
+    "outputs/<run_id>/eval_suite.json",
+    "outputs/<run_id>/metrics.json",
+    "outputs/<run_id>/config.yaml",
+    "outputs/<run_id>/seed.txt",
+    "outputs/<run_id>/<phase_specific_report_file>"
+  ],
+  "decision": "<CONTINUE_or_PAUSE_NEEDS_INPUT>",
+  "next_steps": [
+    "<next_step_1>",
+    "<next_step_2>"
+  ],
+  "needs_user_input": [
+    "<required_input_1>"
+  ]
+}

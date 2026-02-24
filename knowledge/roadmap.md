@@ -1,8 +1,43 @@
 # ASNN-Goose: Roadmap & Version History
 
-**Last Updated**: 2026-01-05
+**As Of**: 2026-02-23
+**Last Updated**: 2026-02-23
 **Current Best**: v14.3 (PPL 306.89)
-**Current Work**: v15 (SpikingBrain Validation)
+**Current Work**: v15 (SpikingBrain Validation remediation + full rerun)
+
+---
+
+## Operations Snapshot (A-K)
+
+This table is the quick status board for the integrated roadmap:
+v15→v16→v17→v18→v19 remains the immutable core chain. H/I/J/K are add-on tracks.
+
+| Phase | Name | Status | Notes |
+|-------|------|--------|-------|
+| A | Engineering Guardrails | IN PROGRESS | Eval/data/verifier/retrieval scaffolds added; full reproducibility guardrails still pending. |
+| B | v15 SpikingBrain Validation | BLOCKED | Latest run failed scientific gate; remediation patch applied, waiting full rerun outputs. |
+| C | Temporal Coding Proof Suite | NOT STARTED | Parallel scientific validation track not yet built. |
+| D | v16 Sparse Ops | NOT STARTED | Starts only after v15 pass gate. |
+| E | v17 Efficiency Metrics | NOT STARTED | Includes model-only and retrieval end-to-end benchmarks. |
+| F | v18 Ablations | NOT STARTED | Expanded matrix pending (KD, retrieval, post-training comparisons). |
+| G | v19 Publication/Repro | NOT STARTED | Repro scripts and publication artifacts pending. |
+| H | Generalist Scorecard + Mixture | IN PROGRESS | `eval/suite.yaml` + `data/mixture.yaml` scaffolds exist; baselines/gates pending. |
+| I | World-Fit Retrieval | IN PROGRESS | Retrieval interface scaffold exists; runtime/index/eval gate pending. |
+| J | Post-Training (Distill + RLVR + Pref) | NOT STARTED | Planned only after gating infrastructure is stable. |
+| K | Scaling Ladder to 1B | NOT STARTED | Blocked until prior gates pass. |
+
+---
+
+## Operations Links
+
+- Ops model: `docs/ops/AUTONOMY_OPERATING_MODEL.md`
+- Live status board: `docs/ops/STATUS_BOARD.md`
+- Gate policy: `docs/ops/GATE_POLICY.md`
+- Reporting contract: `docs/ops/REPORTING_CONTRACT.md`
+- Program state: `state/program_status.yaml`
+- Gate state: `state/gate_results.yaml`
+- Autopilot queue: `state/autopilot_queue.yaml`
+- Report index: `reports/index.md`
 
 ---
 
@@ -21,7 +56,7 @@
 
 **Key Achievement**: Broke 310 target. 29.4% improvement over v13.1.
 
-### v15 - IN PROGRESS
+### v15 - BLOCKED (rerun required)
 
 SpikingBrain: Information Encoding Validation
 
@@ -36,7 +71,17 @@ SpikingBrain: Information Encoding Validation
 | CKA mean | > 0.3 |
 | Firing rate | [0.2, 0.6] |
 
-**Status**: Implementation complete, awaiting validation run.
+**Status**: Latest run `v15_2026-02-23_155547` failed scientific thresholds (`dead neurons`, `MI`, `CKA`) and Phase B is paused.
+Remediation patch is now applied in notebook; waiting for full rerun outputs from RunPod.
+
+**Runtime + scientific remediation update (2026-02-23)**:
+1. Added dependency bootstrap and optional plotting fallback.
+2. Fixed v15 validator batch/forward mismatches (`return_spike_info`, tuple loaders, `val_loader` reference).
+3. Added hard guards for empty loaders and zero-token evaluation.
+4. Added mixed token/channel ternary thresholding to reduce dead channels.
+5. Added spike semantic alignment loss (teacher-to-spike ternary target alignment).
+6. Updated validator to use both `k` and `v` spikes and robust MI discretization.
+7. Preserved autonomous artifact bundle and report-ingestion flow in final save cell.
 
 ---
 
@@ -51,7 +96,7 @@ SpikingBrain: Information Encoding Validation
 | v14 | FDD+CKA | PPL <400 | DONE (424.81) |
 | v14.1 | d_model=512 | PPL <400 | DONE (321.48) |
 | v14.3 | d_model=768 | PPL <310 | **DONE (306.89)** |
-| **v15** | **SpikingBrain** | **Validate encoding** | **IN PROGRESS** |
+| **v15** | **SpikingBrain** | **Validate encoding** | **BLOCKED (rerun pending)** |
 | v16 | Sparse Ops | torch.sparse | PLANNED |
 | v17 | Efficiency Metrics | FLOPs/latency | PLANNED |
 | v18 | Ablations | Experiments | PLANNED |
@@ -243,7 +288,7 @@ min_delta = 0.5
 - [x] Spike density in [0.2, 0.6]
 - [x] No training instability
 
-### Validation (v15 - IN PROGRESS)
+### Validation (v15 - BLOCKED)
 - [ ] Dead neurons < 5%
 - [ ] Saturated neurons < 10%
 - [ ] MI > 0.1
