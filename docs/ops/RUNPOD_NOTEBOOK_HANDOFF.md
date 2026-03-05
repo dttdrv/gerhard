@@ -12,9 +12,10 @@ For current Phase B recovery, run the **full notebook end-to-end** (not a smoke 
 For `notebooks/asnn_goose_colab_v15.ipynb`, the final save cell now:
 1. writes the canonical bundle under `outputs/<run_id>/`,
 2. emits required artifacts (`eval_suite.json`, `metrics.json`, `config.yaml`, `seed.txt`, `v15_spikingbrain.json`),
-3. generates a single-file dossier with embedded figures and raw data (`run_dossier_<run_id>.html`),
-4. attempts auto-download of that dossier in notebook environments,
-5. attempts `register_run(...)` automatically when `scripts/register_notebook_run.py` is available.
+3. emits run fingerprint fields (`config_sha256`, `recipe_sha256`, and `notebook_sha256` when file discovery succeeds),
+4. generates a single-file dossier with embedded figures and raw data (`run_dossier_<run_id>.html`),
+5. attempts auto-download of that dossier in notebook environments,
+6. attempts `register_run(...)` automatically when `scripts/register_notebook_run.py` is available.
 
 If notebook code was patched after a failed run, restart kernel and rerun from the first cell.
 The v15 runtime fixes modify model/validator definitions and require a clean execution order.

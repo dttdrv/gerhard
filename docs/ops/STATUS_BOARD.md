@@ -40,6 +40,12 @@
   - added spike semantic alignment loss (teacher-to-spike ternary target alignment),
   - expanded training logs with semantic-loss curves,
   - fixed validator bias by using both `k` and `v` spikes and robust MI discretization.
+- Notebook artifact hardening applied:
+  - added deterministic run fingerprint fields to artifact outputs:
+    - `config_sha256`,
+    - `recipe_sha256`,
+    - `notebook_sha256` (when notebook file is discoverable in runtime).
+  - fingerprint is now embedded in `metrics.json`, `eval_suite.json`, `config.yaml`, and dossier consolidated payload.
 - Latest execution: patched v15 run ingested from RunPod (RTX 6000 Ada) as `v15_2026-02-23_200258`.
 - Canonical bundle archived: `outputs/v15_2026-02-23_200258/{eval_suite.json,metrics.json,config.yaml,seed.txt,v15_spikingbrain.json,results.json,run_dossier_v15_2026-02-23_200258.html,figures_detailed/*}`.
 - Single-file dossier export is enabled in notebook final cell: `outputs/<run_id>/run_dossier_<run_id>.html` (auto-download attempted by notebook runtime).
