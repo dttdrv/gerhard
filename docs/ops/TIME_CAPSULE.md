@@ -8,6 +8,7 @@
 - Fact: there is no committed `v14.3` / `v15` checkpoint in this repo.
 - Fact: `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` now exists as the default Colab fresh-rerun launcher.
 - Fact: `notebooks/asnn_goose_colab_v15.ipynb` is again an active execution target, but only through the launcher and with notebook-side registration disabled by env.
+- Fact: the fresh-rerun path now emits a much more detailed evidence bundle, including environment, training-curve, hardware-stats, spike-analysis, validation-test, control-suite, checkpoint-metadata, figures-index, detailed-results, and manifest artifacts, plus launcher-copied executed-notebook and env snapshots.
 - Inference: the next capability increase must come from a fresh rerun that produces a new checkpoint and dossier bundle, not from theorizing about the existing red run.
 
 ## current blocker
@@ -36,6 +37,7 @@
 - Fact: `notebooks/asnn_goose_v15_runpod_operator.ipynb` now exists as a thin RunPod operator notebook that executes the canonical reset notebook via `jupyter nbconvert` instead of forking the research logic.
 - Fact: `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb` now exists as the concrete Colab T4 one-cell launcher with the repo remote prefilled and checkpoint auto-discovery.
 - Fact: `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` now exists as the concrete fresh-rerun Colab launcher for the no-checkpoint case.
+- Fact: the launcher now copies `executed_training_notebook.ipynb` and `operator_env.json` into the final run bundle and writes `launcher_bundle_manifest.json`.
 - Fact: `trivy` is intentionally disabled for the remainder of this thread by explicit user instruction; do not schedule further `trivy` actions here.
 
 ## canonical source order
@@ -57,6 +59,7 @@ Strategy context lives in:
 - `notebooks/asnn_goose_v15_runpod_operator.ipynb` as the thin execution helper for RunPod staging.
 - `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb` as the concrete Colab T4 launcher.
 - `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` as the default fresh-rerun launcher when no checkpoint exists.
+- `environment.json`, `training_curves.json`, `hardware_stats.json`, `spike_analysis.json`, `validation_tests.json`, `control_suite.json`, `checkpoint_metadata.json`, `figures_index.json`, `detailed_results.json`, `artifact_manifest.json`, and `launcher_bundle_manifest.json` as the detailed evidence surface for the next rerun.
 - `src/evaluation/spiking_brain.py` collector compatibility path plus `tests/test_spiking_brain.py` for teacher-interface normalization and core MI/CKA aggregation parity.
 - `src/models/goose_backbone.py`, `src/models/ternary_activations.py`, and `src/models/lora_adapter.py` as the best-evidenced model-side modules from current test coverage.
 
@@ -78,6 +81,7 @@ Strategy context lives in:
 - Hypothesis: the reporting path was a real source of evidence drift, and tightening it now will prevent false-green progress signals later.
 - Hypothesis: even after the adapter path works, MI/CKA may still remain red; if so, the blocker is scientific rather than measurement-only.
 - Hypothesis: bundling `v15_best.pt` into the per-run artifact directory will make the next checkpoint-only diagnosis cycle materially easier without changing model behavior.
+- Hypothesis: richer per-run evidence artifacts will reduce ambiguity during post-run diagnosis and prevent another round of “what exactly happened?” after the rerun finishes.
 
 ## next actions
 1. Run `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` on Colab and let it execute `notebooks/asnn_goose_colab_v15.ipynb` with `GERHARD_ENABLE_REGISTER_RUN=0`.
@@ -91,4 +95,4 @@ Strategy context lives in:
 - Should the fresh-rerun launcher eventually replace direct maintenance of `asnn_goose_colab_v15.ipynb`, or is the launcher-plus-env-control split sufficient for Phase 0?
 
 ## last updated
-- 2026-03-11 18:04:21 Europe/Sofia
+- 2026-03-11 18:23:23 Europe/Sofia

@@ -22,6 +22,13 @@ def test_fresh_rerun_launcher_is_single_cell_and_targets_training_notebook():
     assert '"GERHARD_ENABLE_AUTODOWNLOAD_DOSSIER": "0"' in joined_source
     assert '"GIT_COMMIT": git_commit' in joined_source
     assert "v15_best.pt" in joined_source
+    assert "hardware_stats.json" in joined_source
+    assert "spike_analysis.json" in joined_source
+    assert "checkpoint_metadata.json" in joined_source
+    assert "artifact_manifest.json" in joined_source
+    assert "results.json" in joined_source
+    assert "executed_training_notebook.ipynb" in joined_source
+    assert "launcher_bundle_manifest.json" in joined_source
 
 
 def test_training_notebook_has_env_controlled_registration_and_fresh_rerun_knobs():
@@ -39,3 +46,13 @@ def test_training_notebook_has_env_controlled_registration_and_fresh_rerun_knobs
     assert "Notebook-side registration disabled" in joined_source
     assert "Auto-download disabled via GERHARD_ENABLE_AUTODOWNLOAD_DOSSIER=0" in joined_source
     assert "v15_best.pt" in joined_source
+    assert "environment.json" in joined_source
+    assert "training_curves.json" in joined_source
+    assert "hardware_stats.json" in joined_source
+    assert "spike_analysis.json" in joined_source
+    assert "validation_tests.json" in joined_source
+    assert "control_suite.json" in joined_source
+    assert "checkpoint_metadata.json" in joined_source
+    assert "figures_index.json" in joined_source
+    assert "detailed_results.json" in joined_source
+    assert "artifact_manifest.json" in joined_source

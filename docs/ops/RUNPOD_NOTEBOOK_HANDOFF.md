@@ -74,6 +74,21 @@ Keep these files together in one folder:
 
 The fresh-rerun launcher zips the run artifact directory automatically after a structurally complete run.
 
+Detailed evidence files now produced by the fresh rerun:
+- `environment.json`
+- `training_curves.json`
+- `hardware_stats.json`
+- `spike_analysis.json`
+- `validation_tests.json`
+- `control_suite.json`
+- `checkpoint_metadata.json`
+- `figures_index.json`
+- `detailed_results.json`
+- `artifact_manifest.json`
+- `executed_training_notebook.ipynb`
+- `operator_env.json`
+- `launcher_bundle_manifest.json`
+
 ## Laptop-Side Registration
 Preferred:
 

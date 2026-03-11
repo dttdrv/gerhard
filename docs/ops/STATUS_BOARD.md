@@ -56,6 +56,7 @@
 - The launcher executes `notebooks/asnn_goose_colab_v15.ipynb` in a clean subprocess, injects `GIT_COMMIT` plus env-controlled training knobs, keeps notebook-side registration off, and zips the run artifact directory for laptop-side ingestion.
 - `notebooks/asnn_goose_colab_v15.ipynb` now honors env overrides for `SEED`, `distill_steps`, `batch_size`, `accumulation_steps`, `eval_interval`, `run_id`, notebook-side registration, and dossier auto-download.
 - The fresh training notebook now copies `outputs/checkpoints/v15_best.pt` into the per-run artifact bundle so the rerun itself produces the next checkpoint evidence.
+- The fresh training path now emits detailed evidence artifacts: `environment.json`, `training_curves.json`, `hardware_stats.json`, `spike_analysis.json`, `validation_tests.json`, `control_suite.json`, `checkpoint_metadata.json`, `figures_index.json`, `detailed_results.json`, `artifact_manifest.json`, plus launcher-copied `executed_training_notebook.ipynb`, `operator_env.json`, and `launcher_bundle_manifest.json`.
 - `tests/test_colab_fresh_rerun_single_cell_notebook.py` now verifies the launcher target and the training notebook’s env-controlled registration/knob surface.
 
 ## Preflight Adapter Update (2026-03-11)
@@ -110,10 +111,11 @@
 2. YELLOW: archived February 2026 authoritative evidence predates the March 11 reproducibility-gate tightening; the next authoritative run must carry commit + fingerprint metadata cleanly.
 3. YELLOW: scorecard baselines are not yet established for H regression gates.
 4. YELLOW: no repo-local checkpoint exists, so the checkpoint-preflight notebook path is blocked pending a fresh rerun or recovered external checkpoint.
+5. YELLOW: the next fresh rerun must satisfy the deep evidence-bundle contract, not just the minimal registration files.
 
 ## Next Autonomous Actions
 1. Run `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` on Colab and let it execute `notebooks/asnn_goose_colab_v15.ipynb` with notebook-side registration off.
-2. Bring the dossier, artifact bundle, and bundled `v15_best.pt` back to the laptop and register locally with `scripts/register_dossier_run.py`.
+2. Bring the dossier, the full deep evidence bundle, and bundled `v15_best.pt` back to the laptop and register locally with `scripts/register_dossier_run.py`.
 3. Read `reports/index.md`, `state/program_status.yaml`, `state/gate_results.yaml`, and `docs/ops/STATUS_BOARD.md`, then stop.
 4. If the fresh rerun yields a usable checkpoint but Phase B is still structurally ambiguous, use `notebooks/asnn_goose_v15_runpod_operator.ipynb` plus `notebooks/asnn_goose_v15_reset_master.ipynb` for checkpoint-only follow-on diagnosis.
 

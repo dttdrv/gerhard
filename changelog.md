@@ -127,6 +127,20 @@
 **Inferences**
 - The default next action is no longer checkpoint-only `SMOKE -> DIAGNOSE -> FULL`; it is a fresh Colab rerun that produces a new dossier bundle and `v15_best.pt`, followed by laptop-side registration.
 
+### Action 9 - Detailed evidence-bundle expansion for fresh reruns
+**Facts**
+- `notebooks/asnn_goose_colab_v15.ipynb` now writes detailed machine-readable artifacts into each run directory: `environment.json`, `training_curves.json`, `hardware_stats.json`, `spike_analysis.json`, `validation_tests.json`, `control_suite.json`, `checkpoint_metadata.json`, `figures_index.json`, `detailed_results.json`, and `artifact_manifest.json`.
+- The single-file dossier now embeds the raw payloads for those detailed artifacts in addition to the consolidated payload and `results.json` snapshot.
+- `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` now copies `executed_training_notebook.ipynb` and `operator_env.json` into the run bundle and writes `launcher_bundle_manifest.json`.
+- The recursive artifact manifest now walks the whole run directory tree, so copied figures under `figures/` are part of the evidence record instead of being silently omitted.
+- `tests/test_colab_fresh_rerun_single_cell_notebook.py` now verifies that the launcher and training notebook still expose the expanded detailed-artifact surface.
+
+**Hypotheses**
+- A richer evidence bundle is the smallest credible way to satisfy “much more detailed results of absolutely everything” without changing model behavior or the registration contract.
+
+**Inferences**
+- After the next rerun, post-run diagnosis should be possible from the bundle itself instead of requiring another notebook reconstruction pass.
+
 ---
 
 ## [v15] 2026-01-05 - SpikingBrain: Information Encoding Validation

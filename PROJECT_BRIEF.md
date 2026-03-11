@@ -30,5 +30,6 @@
 ## Current Bounded Next Step
 - Fact: there is no committed `v14.3` / `v15` checkpoint in this repo, so the checkpoint-only preflight path cannot run as the default next step.
 - Run a fresh rerun from `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` on Colab. That launcher executes `notebooks/asnn_goose_colab_v15.ipynb` with notebook-side registration disabled and exports a dossier bundle for laptop-side registration.
+- The fresh rerun now emits a detailed evidence bundle, not just the minimum registration files: environment snapshot, raw training curves, validation tests, control-suite payload, figures index, detailed results, artifact manifest, executed notebook copy, and launcher env snapshot.
 - Register the resulting dossier locally on the laptop with `scripts/register_dossier_run.py`, then read the canonical truth files and stop.
 - After the fresh rerun produces `v15_best.pt`, the checkpoint-only reset notebook path becomes usable again for follow-on diagnosis if needed.
