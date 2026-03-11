@@ -13,9 +13,9 @@ Components:
 3. RepresentationAnalyzer: CKA similarity between spike and teacher representations
 4. SpikingBrainValidator: Main orchestrator for full validation suite
 """
+import math
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, field
@@ -105,57 +105,57 @@ class MutualInformationEstimator:
             teacher_hidden: Teacher hidden states (batch, seq, d_teacher)
 
         Returns:
-            Estimated mutual information in nats (can convert to bits by /log(2))
+            Estimated mutual information in bits.
         """
         with torch.no_grad():
-            # Flatten to (N, d)
-            s_flat = spikes.view(-1, spikes.shape[-1]).float().cpu().numpy()
-            t_flat = teacher_hidden.view(-1, teacher_hidden.shape[-1]).float().cpu().numpy()
+            s_flat = spikes.reshape(-1, spikes.shape[-1]).float().cpu().numpy()
+            t_flat = teacher_hidden.reshape(-1, teacher_hidden.shape[-1]).float().cpu().numpy()
 
-            # Use first n_dims dimensions for speed
+            n = min(s_flat.shape[0], t_flat.shape[0], 10000)
+            if n == 0:
+                return 0.0
+
+            s_flat = s_flat[:n]
+            t_flat = t_flat[:n]
             n_dims = min(self.n_dims, s_flat.shape[1], t_flat.shape[1])
-            s_reduced = s_flat[:, :n_dims]
-            t_reduced = t_flat[:, :n_dims]
+            if n_dims == 0:
+                return 0.0
 
-            # Compute MI per dimension and average
-            mi_sum = 0.0
-            for d in range(n_dims):
-                # Spike values are already discrete: {-1, 0, 1} -> {0, 1, 2}
-                s_bins = (s_reduced[:, d] + 1).astype(int)
-                s_bins = np.clip(s_bins, 0, 2)
+            mi_values = []
+            for dim in range(n_dims):
+                s_col = s_flat[:, dim]
+                t_col = t_flat[:, dim]
 
-                # Bin teacher values into n_bins
-                t_col = t_reduced[:, d]
-                t_min, t_max = t_col.min(), t_col.max()
-                if t_max - t_min < 1e-8:
-                    continue  # Constant column, no information
+                t_min = float(t_col.min())
+                t_max = float(t_col.max())
+                if abs(t_max - t_min) < 1e-12:
+                    continue
 
                 t_bins = np.digitize(
                     t_col,
-                    np.linspace(t_min, t_max, self.n_bins + 1)[1:-1]
+                    np.linspace(t_min, t_max, self.n_bins + 1)[1:-1],
                 )
 
-                # Joint and marginal histograms
-                joint_hist, _, _ = np.histogram2d(
-                    s_bins, t_bins,
-                    bins=[3, self.n_bins],
-                    range=[[0, 3], [0, self.n_bins]]
-                )
-                joint_prob = joint_hist / (joint_hist.sum() + 1e-10)
+                # Notebook parity: collapse ternary values to sign buckets.
+                s_disc = np.ones_like(s_col, dtype=np.int32)
+                s_disc[s_col > 1e-6] = 2
+                s_disc[s_col < -1e-6] = 0
 
-                s_marginal = joint_prob.sum(axis=1) + 1e-10
-                t_marginal = joint_prob.sum(axis=0) + 1e-10
+                joint = np.zeros((3, self.n_bins), dtype=np.float64)
+                for idx in range(n):
+                    t_bin = max(0, min(int(t_bins[idx]), self.n_bins - 1))
+                    joint[s_disc[idx], t_bin] += 1.0
 
-                # MI = sum p(x,y) log(p(x,y) / (p(x)p(y)))
-                for i in range(3):
-                    for j in range(self.n_bins):
-                        p_xy = joint_prob[i, j]
-                        if p_xy > 1e-10:
-                            mi_sum += p_xy * np.log(
-                                p_xy / (s_marginal[i] * t_marginal[j])
-                            )
+                joint = joint / (joint.sum() + 1e-12)
+                p_s = joint.sum(axis=1, keepdims=True) + 1e-12
+                p_t = joint.sum(axis=0, keepdims=True) + 1e-12
 
-            return mi_sum / max(n_dims, 1)
+                mi = float(np.sum(joint * np.log2((joint + 1e-12) / (p_s * p_t))))
+                mi_values.append(max(0.0, mi))
+
+            if not mi_values:
+                return 0.0
+            return float(np.mean(mi_values))
 
     def estimate_mi(
         self,
@@ -175,7 +175,7 @@ class MutualInformationEstimator:
         mi = self.binning_mi(spikes, teacher_hidden)
         return {
             "mutual_information": float(mi),
-            "method": "binning",
+            "method": "binning_sign_discretization",
             "n_bins": self.n_bins,
             "n_dims_analyzed": self.n_dims,
         }
@@ -196,7 +196,8 @@ class RepresentationAnalyzer:
         self,
         X: torch.Tensor,
         Y: torch.Tensor,
-        eps: float = 1e-8,
+        eps: float = 1e-12,
+        max_samples: int = 5000,
     ) -> float:
         """
         Compute linear CKA between two representation matrices.
@@ -211,36 +212,24 @@ class RepresentationAnalyzer:
         Returns:
             CKA similarity in [0, 1]
         """
-        with torch.cuda.amp.autocast(enabled=False):
-            X = X.float().view(-1, X.shape[-1])
-            Y = Y.float().view(-1, Y.shape[-1])
+        x = X.reshape(-1, X.shape[-1]).float().cpu().numpy()
+        y = Y.reshape(-1, Y.shape[-1]).float().cpu().numpy()
 
-            # Ensure same number of samples
-            n = min(X.shape[0], Y.shape[0])
-            X = X[:n]
-            Y = Y[:n]
+        n = min(x.shape[0], y.shape[0], max_samples)
+        if n == 0:
+            return 0.0
 
-            # Center
-            X_centered = X - X.mean(dim=0, keepdim=True)
-            Y_centered = Y - Y.mean(dim=0, keepdim=True)
+        x = x[:n]
+        y = y[:n]
+        x = x - x.mean(axis=0, keepdims=True)
+        y = y - y.mean(axis=0, keepdims=True)
 
-            # Row normalize for stability
-            X_norm = X_centered / (X_centered.norm(dim=1, keepdim=True) + eps)
-            Y_norm = Y_centered / (Y_centered.norm(dim=1, keepdim=True) + eps)
+        hsic_xy = np.linalg.norm(x.T @ y, ord="fro") ** 2
+        hsic_xx = np.linalg.norm(x.T @ x, ord="fro") ** 2
+        hsic_yy = np.linalg.norm(y.T @ y, ord="fro") ** 2
 
-            # Gram matrices
-            K_X = X_norm @ X_norm.T
-            K_Y = Y_norm @ Y_norm.T
-
-            # HSIC (Hilbert-Schmidt Independence Criterion)
-            hsic_xy = (K_X * K_Y).sum()
-            hsic_xx = (K_X * K_X).sum()
-            hsic_yy = (K_Y * K_Y).sum()
-
-            # CKA = HSIC(X,Y) / sqrt(HSIC(X,X) * HSIC(Y,Y))
-            cka = hsic_xy / (torch.sqrt(hsic_xx * hsic_yy) + eps)
-
-            return float(cka.item())
+        denom = math.sqrt(float(hsic_xx * hsic_yy)) + eps
+        return float(hsic_xy / denom)
 
     def compute_spike_cka(
         self,
@@ -267,27 +256,35 @@ class RepresentationAnalyzer:
             if t_layer not in teacher_hiddens:
                 continue
 
-            # Collect K spikes from this layer
+            # Collect spike channels from this layer
             layer_spikes = spike_info[s_layer]
             if not layer_spikes:
                 continue
-
-            k_spikes = torch.cat(
-                [s["k_spikes"].view(-1, s["k_spikes"].shape[-1])
-                 for s in layer_spikes],
-                dim=0
-            ).to(self.device)
 
             teacher_h = teacher_hiddens[t_layer].view(
                 -1, teacher_hiddens[t_layer].shape[-1]
             ).to(self.device)
 
-            cka = self.linear_cka(k_spikes, teacher_h)
-            results[f"cka_layer_{s_layer}_to_{t_layer}"] = cka
+            local_cka = []
+            for spike_key, suffix in (("k_spikes", "k"), ("v_spikes", "v")):
+                tensors = [s[spike_key] for s in layer_spikes if spike_key in s]
+                if not tensors:
+                    continue
+
+                spikes = torch.cat(
+                    [tensor.view(-1, tensor.shape[-1]) for tensor in tensors],
+                    dim=0,
+                ).to(self.device)
+                cka = self.linear_cka(spikes, teacher_h)
+                results[f"layer_{s_layer}_to_{t_layer}_{suffix}"] = cka
+                local_cka.append(cka)
+
+            if local_cka:
+                results[f"layer_{s_layer}_to_{t_layer}"] = float(np.mean(local_cka))
 
         if results:
-            cka_values = [v for k, v in results.items() if k.startswith("cka_layer")]
-            results["cka_mean"] = float(np.mean(cka_values))
+            results["cka_mean"] = float(np.mean(list(results.values())))
+            results["method"] = "linear_cka"
 
         return results
 
@@ -344,6 +341,85 @@ class SpikingBrainValidator:
         self.mi_estimator = MutualInformationEstimator()
         self.rep_analyzer = RepresentationAnalyzer(device)
 
+    def _accumulate_layer_spikes(
+        self,
+        all_spike_info: Dict[int, List[Dict[str, torch.Tensor]]],
+        layer_idx: int,
+        spikes: Any,
+    ) -> None:
+        """Normalize spike traces to a list-of-dicts collector shape."""
+        if layer_idx not in all_spike_info:
+            all_spike_info[layer_idx] = []
+
+        if isinstance(spikes, dict):
+            all_spike_info[layer_idx].append(spikes)
+            return
+
+        if isinstance(spikes, list):
+            all_spike_info[layer_idx].extend(spikes)
+            return
+
+        raise RuntimeError(
+            f"Unsupported spike_info payload for layer {layer_idx}: {type(spikes)!r}"
+        )
+
+    def _collect_teacher_layer_hiddens(
+        self,
+        teacher: nn.Module,
+        input_ids: torch.Tensor,
+    ) -> Dict[int, torch.Tensor]:
+        """Support both Hugging Face-style and repo-native teacher interfaces."""
+        mapped_layers = tuple(dict.fromkeys(self.layer_map.values()))
+        teacher_out = None
+
+        try:
+            teacher_out = teacher(input_ids, output_hidden_states=True)
+        except TypeError:
+            teacher_out = None
+
+        hidden_states = getattr(teacher_out, "hidden_states", None)
+        if hidden_states is not None:
+            teacher_hiddens: Dict[int, torch.Tensor] = {}
+            for t_layer in mapped_layers:
+                hidden_index = t_layer + 1
+                if hidden_index >= len(hidden_states):
+                    raise RuntimeError(
+                        f"Teacher hidden_states missing mapped layer {t_layer}."
+                    )
+                teacher_hiddens[t_layer] = hidden_states[hidden_index].detach().cpu()
+            return teacher_hiddens
+
+        if teacher_out is None:
+            teacher_out = teacher(input_ids, return_features=True)
+
+        if not (isinstance(teacher_out, tuple) and len(teacher_out) == 3):
+            raise RuntimeError(
+                "Teacher must return Hugging Face hidden_states or a repo-native "
+                "(logits, states, aux) tuple."
+            )
+
+        _, _, teacher_aux = teacher_out
+        layer_activations = (
+            teacher_aux.get("layer_activations")
+            if isinstance(teacher_aux, dict)
+            else None
+        )
+        if not isinstance(layer_activations, dict):
+            raise RuntimeError(
+                "Teacher repo-native forward missing aux['layer_activations']."
+            )
+
+        teacher_hiddens = {}
+        for t_layer in mapped_layers:
+            if t_layer not in layer_activations:
+                raise RuntimeError(
+                    f"Teacher repo-native forward missing layer activation for "
+                    f"mapped layer {t_layer}."
+                )
+            teacher_hiddens[t_layer] = layer_activations[t_layer].detach().cpu()
+
+        return teacher_hiddens
+
     @torch.no_grad()
     def collect_representations(
         self,
@@ -383,25 +459,18 @@ class SpikingBrainValidator:
             _, _, student_aux = student(input_ids, return_spike_info=True)
 
             # Teacher forward with hidden states
-            teacher_out = teacher(input_ids, output_hidden_states=True)
-            teacher_hiddens = teacher_out.hidden_states
+            teacher_hiddens = self._collect_teacher_layer_hiddens(teacher, input_ids)
 
             # Accumulate spike info
             spike_info = student_aux.get("spike_info", {})
             for layer_idx, spikes in spike_info.items():
-                if layer_idx not in all_spike_info:
-                    all_spike_info[layer_idx] = []
-                # spikes is a list of dicts per timestep
-                all_spike_info[layer_idx].extend(spikes)
+                self._accumulate_layer_spikes(all_spike_info, layer_idx, spikes)
 
             # Accumulate teacher hiddens (only mapped layers)
-            for t_layer in self.layer_map.values():
+            for t_layer, teacher_hidden in teacher_hiddens.items():
                 if t_layer not in all_teacher_hiddens:
                     all_teacher_hiddens[t_layer] = []
-                # +1 because hidden_states[0] is embedding
-                all_teacher_hiddens[t_layer].append(
-                    teacher_hiddens[t_layer + 1].detach().cpu()
-                )
+                all_teacher_hiddens[t_layer].append(teacher_hidden)
 
         # Stack teacher hiddens
         teacher_hiddens_stacked = {}
@@ -497,6 +566,79 @@ class SpikingBrainValidator:
             alerts=alerts,
         )
 
+    def _compute_information_and_cka(
+        self,
+        spike_info: Dict[int, List[Dict[str, torch.Tensor]]],
+        teacher_hiddens: Dict[int, torch.Tensor],
+    ) -> Tuple[Dict[str, float], Dict[str, float]]:
+        """Mirror the reset notebook's per-layer K/V aggregation logic."""
+        mi_results: Dict[str, float] = {}
+        cka_results: Dict[str, float] = {}
+        mi_metadata: Dict[str, float] = {}
+
+        for s_layer, t_layer in self.layer_map.items():
+            if s_layer not in spike_info or t_layer not in teacher_hiddens:
+                continue
+
+            layer_spikes = spike_info[s_layer]
+            teacher_h = teacher_hiddens[t_layer].view(
+                -1, teacher_hiddens[t_layer].shape[-1]
+            )
+
+            local_mi: List[float] = []
+            local_cka: List[float] = []
+
+            for spike_key, suffix in (("k_spikes", "k"), ("v_spikes", "v")):
+                spike_tensors = [s[spike_key] for s in layer_spikes if spike_key in s]
+                if not spike_tensors:
+                    continue
+
+                spikes_flat = torch.cat(
+                    [spikes.view(-1, spikes.shape[-1]) for spikes in spike_tensors],
+                    dim=0,
+                )
+
+                mi_payload = self.mi_estimator.estimate_mi(spikes_flat, teacher_h)
+                mi_value = float(mi_payload.get("mutual_information", 0.0))
+                mi_results[f"layer_{s_layer}_to_{t_layer}_{suffix}"] = mi_value
+                local_mi.append(mi_value)
+
+                if not mi_metadata:
+                    mi_metadata = {
+                        key: value
+                        for key, value in mi_payload.items()
+                        if key != "mutual_information"
+                    }
+
+                cka_value = self.rep_analyzer.linear_cka(spikes_flat, teacher_h)
+                cka_results[f"layer_{s_layer}_to_{t_layer}_{suffix}"] = cka_value
+                local_cka.append(cka_value)
+
+            if local_mi:
+                mi_results[f"layer_{s_layer}_to_{t_layer}"] = float(np.mean(local_mi))
+            if local_cka:
+                cka_results[f"layer_{s_layer}_to_{t_layer}"] = float(np.mean(local_cka))
+
+        mi_mean = float(np.mean(list(mi_results.values()))) if mi_results else 0.0
+        cka_mean = float(np.mean(list(cka_results.values()))) if cka_results else 0.0
+
+        mi_summary: Dict[str, float] = {
+            **mi_results,
+            "mutual_information": mi_mean,
+            "method": mi_metadata.get("method", "binning"),
+        }
+        for key in ("n_bins", "n_dims_analyzed"):
+            if key in mi_metadata:
+                mi_summary[key] = mi_metadata[key]
+
+        cka_summary: Dict[str, float] = {
+            **cka_results,
+            "cka_mean": cka_mean,
+            "method": "linear_cka",
+        }
+
+        return mi_summary, cka_summary
+
     def validate(
         self,
         student: nn.Module,
@@ -525,29 +667,11 @@ class SpikingBrainValidator:
         print("Computing health metrics...")
         health = self.compute_health_metrics(spike_info)
 
-        # 2. Mutual Information
+        # 2-3. Mutual Information + CKA
         print("Estimating mutual information...")
-        # Use first mapped layer pair
-        s_layer = list(self.layer_map.keys())[0]
-        t_layer = self.layer_map[s_layer]
-
-        if s_layer in spike_info and spike_info[s_layer]:
-            k_spikes = torch.cat(
-                [s["k_spikes"].view(-1, s["k_spikes"].shape[-1])
-                 for s in spike_info[s_layer]],
-                dim=0
-            )
-            teacher_h = teacher_hiddens[t_layer].view(
-                -1, teacher_hiddens[t_layer].shape[-1]
-            )
-            mi_results = self.mi_estimator.estimate_mi(k_spikes, teacher_h)
-        else:
-            mi_results = {"mutual_information": 0.0, "method": "binning"}
-
-        # 3. CKA
         print("Computing CKA similarity...")
-        cka_results = self.rep_analyzer.compute_spike_cka(
-            spike_info, teacher_hiddens, self.layer_map
+        mi_results, cka_results = self._compute_information_and_cka(
+            spike_info, teacher_hiddens
         )
 
         # Overall assessment
@@ -593,7 +717,7 @@ class SpikingBrainValidator:
 
         # Add per-layer CKA
         for key, value in cka.items():
-            if key.startswith("cka_layer"):
+            if key.startswith("cka_layer") or key.startswith("layer_"):
                 lines.append(f"    {key}: {value:.4f}")
 
         # Alerts

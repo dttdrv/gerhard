@@ -50,6 +50,8 @@ PHASE_REQUIRED_ARTIFACTS = {
     "B": ["v15_spikingbrain.json"],
 }
 
+RUN_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
 
 def _utc_now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
@@ -57,6 +59,20 @@ def _utc_now_iso() -> str:
 
 def _today_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).date().isoformat()
+
+
+def validate_run_id(run_id: str) -> str:
+    if not isinstance(run_id, str):
+        raise ValueError("run_id must be a string.")
+    normalized = run_id.strip()
+    if not normalized:
+        raise ValueError("run_id must not be empty.")
+    if not RUN_ID_PATTERN.fullmatch(normalized):
+        raise ValueError(
+            "Unsafe run_id. Allowed characters: letters, numbers, '.', '_', '-'; "
+            "path separators and whitespace are not allowed."
+        )
+    return normalized
 
 
 def _copy_tree_merge(src: Path, dst: Path) -> None:
@@ -86,6 +102,10 @@ def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_yaml(path: Path) -> Any:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
 def _read_text_if_exists(path: Path) -> str:
     if not path.exists():
         return ""
@@ -107,7 +127,109 @@ def _collect_artifact_paths(output_dir: Path, repo_root: Path | None = None) -> 
     return files
 
 
-def evaluate_gates(output_dir: Path, phase: str) -> Tuple[List[Dict[str, str]], List[str]]:
+def _is_hex_string(value: Any, length: int | None = None) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if not text:
+        return False
+    if length is not None and len(text) != length:
+        return False
+    return bool(re.fullmatch(r"[0-9a-fA-F]+", text))
+
+
+def inspect_reproducibility_metadata(
+    output_dir: Path,
+    repo_root: Path | None = None,
+) -> Dict[str, Any]:
+    config_data: Dict[str, Any] = {}
+    metrics_data: Dict[str, Any] = {}
+    eval_data: Dict[str, Any] = {}
+
+    config_path = output_dir / "config.yaml"
+    metrics_path = output_dir / "metrics.json"
+    eval_path = output_dir / "eval_suite.json"
+
+    try:
+        loaded = _load_yaml(config_path)
+        if isinstance(loaded, dict):
+            config_data = loaded
+    except (yaml.YAMLError, OSError):
+        config_data = {}
+
+    try:
+        loaded = _load_json(metrics_path)
+        if isinstance(loaded, dict):
+            metrics_data = loaded
+    except (json.JSONDecodeError, OSError):
+        metrics_data = {}
+
+    try:
+        loaded = _load_json(eval_path)
+        if isinstance(loaded, dict):
+            eval_data = loaded
+    except (json.JSONDecodeError, OSError):
+        eval_data = {}
+
+    commit_candidates = [
+        config_data.get("git_commit"),
+        config_data.get("commit"),
+        config_data.get("git_hash"),
+        metrics_data.get("git_commit"),
+        metrics_data.get("commit"),
+        metrics_data.get("git_hash"),
+        eval_data.get("git_commit"),
+        eval_data.get("commit"),
+        eval_data.get("git_hash"),
+    ]
+
+    commit = next(
+        (
+            candidate.strip()
+            for candidate in commit_candidates
+            if _is_hex_string(candidate, length=40)
+        ),
+        None,
+    )
+
+    fingerprint_sources = [
+        config_data.get("fingerprint"),
+        metrics_data.get("fingerprint"),
+        eval_data.get("fingerprint"),
+    ]
+    fingerprint = next(
+        (
+            candidate
+            for candidate in fingerprint_sources
+            if isinstance(candidate, dict)
+        ),
+        {},
+    )
+
+    missing: List[str] = []
+    if commit is None:
+        missing.append("commit")
+
+    config_sha256 = fingerprint.get("config_sha256")
+    recipe_sha256 = fingerprint.get("recipe_sha256")
+    if not _is_hex_string(config_sha256, length=64):
+        missing.append("config_sha256")
+    if not _is_hex_string(recipe_sha256, length=64):
+        missing.append("recipe_sha256")
+
+    return {
+        "commit": commit,
+        "commit_source": "artifact" if commit else None,
+        "fingerprint": fingerprint,
+        "missing": missing,
+    }
+
+
+def evaluate_gates(
+    output_dir: Path,
+    phase: str,
+    repo_root: Path | None = None,
+) -> Tuple[List[Dict[str, str]], List[str]]:
     missing_required = [name for name in REQUIRED_ARTIFACTS if not (output_dir / name).exists()]
     missing_phase_required = [
         name for name in PHASE_REQUIRED_ARTIFACTS.get(phase, [])
@@ -189,6 +311,43 @@ def evaluate_gates(output_dir: Path, phase: str) -> Tuple[List[Dict[str, str]], 
             "delta_vs_baseline": "n/a",
             "notes": "pass",
         })
+
+    if not missing_required:
+        reproducibility = inspect_reproducibility_metadata(output_dir, repo_root=repo_root)
+        missing_metadata = reproducibility["missing"]
+        if missing_metadata:
+            gates.append({
+                "gate_name": "reproducibility_metadata",
+                "status": "red",
+                "observed": f"missing metadata: {', '.join(missing_metadata)}",
+                "threshold": (
+                    "commit plus fingerprint fields (config_sha256, recipe_sha256) "
+                    "must be present"
+                ),
+                "delta_vs_baseline": "n/a",
+                "notes": "cannot certify reproducibility metadata",
+            })
+            needs_input.append(
+                "Provide reproducibility metadata: git commit and fingerprint fields "
+                "(config_sha256, recipe_sha256)."
+            )
+        else:
+            commit = reproducibility["commit"]
+            commit_source = reproducibility.get("commit_source") or "artifact"
+            gates.append({
+                "gate_name": "reproducibility_metadata",
+                "status": "green",
+                "observed": (
+                    f"commit={commit}; commit_source={commit_source}; "
+                    "config_sha256 present; recipe_sha256 present"
+                ),
+                "threshold": (
+                    "commit plus fingerprint fields (config_sha256, recipe_sha256) "
+                    "must be present"
+                ),
+                "delta_vs_baseline": "n/a",
+                "notes": "pass",
+            })
 
     if phase == "B" and not missing_phase_required:
         v15_path = output_dir / "v15_spikingbrain.json"
@@ -312,6 +471,8 @@ def _markdown_report(
     artifact_paths: List[str],
     needs_input: List[str],
     next_action: str,
+    commit: str | None,
+    commit_source: str | None,
 ) -> str:
     gate_lines = []
     for g in gates:
@@ -329,6 +490,8 @@ def _markdown_report(
 ## Tier 1: Executive Summary
 - Run ID: `{run_id}`
 - Timestamp UTC: `{timestamp_utc}`
+- Commit: `{commit or "unknown"}`
+- Commit source: `{commit_source or "missing"}`
 - Phase: `{phase_name}` ({phase})
 - What changed: {summary}
 - Gate outcome: `{decision}`
@@ -363,11 +526,14 @@ def _json_report(
     artifact_paths: List[str],
     needs_input: List[str],
     next_action: str,
+    commit: str | None,
+    commit_source: str | None,
 ) -> Dict[str, Any]:
     return {
         "run_id": run_id,
         "timestamp_utc": timestamp_utc,
-        "commit": "unknown",
+        "commit": commit,
+        "commit_source": commit_source,
         "phase": phase,
         "phase_name": phase_name,
         "executive_summary": {
@@ -540,6 +706,7 @@ def register_run(
         Dict containing report paths and final decision.
     """
     normalized_phase = phase.strip().upper()
+    normalized_run_id = validate_run_id(run_id)
     if normalized_phase not in PHASE_TO_NAME:
         raise ValueError(
             f"Unsupported phase '{phase}'. Expected one of: {', '.join(PHASE_TO_NAME)}"
@@ -552,12 +719,12 @@ def register_run(
     if not resolved_source.exists():
         raise FileNotFoundError(f"Source directory does not exist: {resolved_source}")
 
-    output_dir = resolved_repo / "outputs" / run_id
+    output_dir = resolved_repo / "outputs" / normalized_run_id
     output_dir.mkdir(parents=True, exist_ok=True)
     if resolved_source != output_dir.resolve():
         _copy_tree_merge(resolved_source, output_dir)
 
-    gates, needs_input = evaluate_gates(output_dir, phase=normalized_phase)
+    gates, needs_input = evaluate_gates(output_dir, phase=normalized_phase, repo_root=resolved_repo)
     decision = decide_autopilot(gates, force_mode=decision_mode)
     effective_next_action = next_action
     if decision == "PAUSE_NEEDS_INPUT":
@@ -565,17 +732,18 @@ def register_run(
     timestamp_utc = _utc_now_iso()
     phase_name = PHASE_TO_NAME[normalized_phase]
     artifact_paths = _collect_artifact_paths(output_dir, repo_root=resolved_repo)
+    reproducibility = inspect_reproducibility_metadata(output_dir, repo_root=resolved_repo)
 
     date = dt.datetime.now(dt.timezone.utc)
     report_dir = resolved_repo / "reports" / f"{date.year:04d}" / f"{date.month:02d}"
     report_dir.mkdir(parents=True, exist_ok=True)
-    report_md_path = report_dir / f"{run_id}.md"
-    report_json_path = report_dir / f"{run_id}.json"
+    report_md_path = report_dir / f"{normalized_run_id}.md"
+    report_json_path = report_dir / f"{normalized_run_id}.json"
     report_md_rel = report_md_path.relative_to(resolved_repo).as_posix()
     report_json_rel = report_json_path.relative_to(resolved_repo).as_posix()
 
     report_md_text = _markdown_report(
-        run_id=run_id,
+        run_id=normalized_run_id,
         timestamp_utc=timestamp_utc,
         phase=normalized_phase,
         phase_name=phase_name,
@@ -585,11 +753,13 @@ def register_run(
         artifact_paths=artifact_paths,
         needs_input=needs_input,
         next_action=effective_next_action,
+        commit=reproducibility["commit"],
+        commit_source=reproducibility.get("commit_source"),
     )
     report_md_path.write_text(report_md_text, encoding="utf-8")
 
     report_json_obj = _json_report(
-        run_id=run_id,
+        run_id=normalized_run_id,
         timestamp_utc=timestamp_utc,
         phase=normalized_phase,
         phase_name=phase_name,
@@ -599,6 +769,8 @@ def register_run(
         artifact_paths=artifact_paths,
         needs_input=needs_input,
         next_action=effective_next_action,
+        commit=reproducibility["commit"],
+        commit_source=reproducibility.get("commit_source"),
     )
     report_json_path.write_text(json.dumps(report_json_obj, indent=2), encoding="utf-8")
 
@@ -610,7 +782,7 @@ def register_run(
     )
     update_reports_index(
         index_path=index_path,
-        run_id=run_id,
+        run_id=normalized_run_id,
         timestamp_utc=timestamp_utc,
         phase_name=phase_name,
         decision=decision,
@@ -619,7 +791,7 @@ def register_run(
     )
     update_program_status(
         program_status_path=resolved_repo / "state" / "program_status.yaml",
-        run_id=run_id,
+        run_id=normalized_run_id,
         phase=normalized_phase,
         decision=decision,
         report_md_rel=report_md_rel,
@@ -628,12 +800,12 @@ def register_run(
     )
     write_gate_results(
         gate_results_path=resolved_repo / "state" / "gate_results.yaml",
-        run_id=run_id,
+        run_id=normalized_run_id,
         gates=gates,
     )
     update_status_board(
         status_board_path=resolved_repo / "docs" / "ops" / "STATUS_BOARD.md",
-        run_id=run_id,
+        run_id=normalized_run_id,
         timestamp_utc=timestamp_utc,
         phase_name=phase_name,
         decision=decision,
@@ -642,10 +814,10 @@ def register_run(
     )
 
     if decision == "PAUSE_NEEDS_INPUT":
-        needs_input_path = report_dir / f"{run_id}_needs_input.md"
+        needs_input_path = report_dir / f"{normalized_run_id}_needs_input.md"
         needs_input_body = "\n".join(f"- {item}" for item in needs_input) or "- no explicit items captured"
         needs_input_path.write_text(
-            f"# Needs Input\n\nRun `{run_id}` paused.\n\n## Required inputs\n{needs_input_body}\n",
+            f"# Needs Input\n\nRun `{normalized_run_id}` paused.\n\n## Required inputs\n{needs_input_body}\n",
             encoding="utf-8",
         )
 

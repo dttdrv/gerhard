@@ -1,5 +1,119 @@
 # ASNN-Goose Changelog
 
+## 2026-03-11 - Phase 0 Cycle 1: Truth + Gate Drift Alignment
+
+### Action 1 - Reporting gate hardening
+**Facts**
+- `scripts/register_notebook_run.py` now inspects reproducibility metadata and emits a deterministic `reproducibility_metadata` gate instead of silently writing `commit: unknown` as if the evidence were clean.
+- `tests/test_register_notebook_run.py` now uses the nested `validation.health`, `validation.mutual_information`, and `validation.cka` Phase B artifact shape and covers the missing-reproducibility path.
+- Fresh verification on 2026-03-11:
+  - `python -m pytest .\tests\test_register_notebook_run.py -q` -> `9 passed`
+  - `python -m pytest -q` -> `43 passed`
+
+**Hypotheses**
+- Tightening the registration gate now will prevent future false-green reports from being treated as authoritative evidence.
+
+**Inferences**
+- Archived February 2026 reports remain historically valuable but must be described as pre-tightening evidence for reproducibility claims.
+
+### Action 2 - Governance bridge
+**Facts**
+- Added `PROJECT_BRIEF.md` as a pointer-only document for mission, constraints, and source-order discovery.
+- Added `docs/ops/TIME_CAPSULE.md` as the living handoff memory with required sections seeded from authoritative current sources.
+- Updated `reports/README.md`, `docs/ops/REPORTING_CONTRACT.md`, and `docs/ops/STATUS_BOARD.md` to keep the existing canonical source order primary and to mark February 2026 archived runs as pre-tightening evidence.
+
+**Hypotheses**
+- Bridging the current truth stack is lower-risk than introducing root `STATE.yaml` / `LOG.md` during this cycle.
+
+**Inferences**
+- The next bounded intervention should target the repo-native Phase B checkpoint preflight adapter, not model math or a fresh expensive rerun.
+
+### Action 3 - Verification archive
+**Facts**
+- A synthetic registration repo under `%TEMP%` produced `CONTINUE` and coherent `reports/index.md`, `state/program_status.yaml`, `state/gate_results.yaml`, and `docs/ops/STATUS_BOARD.md`.
+- The authoritative dossier for `v15_2026-02-23_200258` was reopened over localhost and still matches the blocked MI/CKA story in the archived evidence.
+- `trivy` filesystem scanning still failed through the MCP server on 2026-03-11 with an internal tool error; no clean vulnerability scan artifact was produced in this cycle.
+
+**Hypotheses**
+- The Trivy failure is environmental/tooling drift rather than repo content drift, but it remains unproven until a clean scan succeeds.
+
+**Inferences**
+- Trivy failure must stay visible in `docs/ops/TIME_CAPSULE.md` and cannot be silently omitted from verification reporting.
+
+### Action 4 - Repo-native Phase B preflight adapter
+**Facts**
+- `src/evaluation/spiking_brain.py` now normalizes teacher activations from either Hugging Face-style `.hidden_states` outputs or repo-native `TeacherModel` `aux["layer_activations"]` during representation collection.
+- The validator now aggregates MI/CKA across mapped layers and both `k` / `v` spike channels in the same core shape as the reset notebook instead of using only the first mapped `k` path.
+- The same collector path now accepts spike traces as either a single dict or a list of per-timestep dicts and raises an explicit error when a mapped repo teacher layer activation is missing.
+- Added `tests/test_spiking_brain.py` to cover repo-native teacher compatibility, preserved Hugging Face-style compatibility, single-dict spike normalization, and notebook-parity MI/CKA aggregation.
+- Fresh verification on 2026-03-11:
+  - `python -m pytest .\tests\test_spiking_brain.py -q` -> `4 passed`
+  - `python -m pytest -q` -> `47 passed`
+  - A direct CPU smoke call to `SpikingBrainValidator.validate()` with small repo-native `TeacherModel` / `ASNNGoose` instances completed without interface errors.
+- `PROJECT_BRIEF.md`, `docs/ops/TIME_CAPSULE.md`, and `docs/ops/STATUS_BOARD.md` were updated so the next bounded action is checkpoint-only `SMOKE` / `DIAGNOSE`, not another adapter build pass.
+
+**Hypotheses**
+- The immediate blocker for repo-native checkpoint preflight was evaluator drift in the collector seam and core MI/CKA aggregation path, not model math.
+- If the next checkpoint-only validation still disagrees with the reset notebook, the remaining drift is more likely in control-suite logic than in teacher activation access or core metric aggregation.
+
+**Inferences**
+- The cheapest honest next step is to run checkpoint-only `SMOKE` and `DIAGNOSE` against an existing checkpoint before considering any notebook rerun.
+- `trivy` remains intentionally out of scope for this thread by explicit user instruction and is not part of the current verification loop.
+
+### Action 5 - Phase B finish-path hardening
+**Facts**
+- `scripts/register_dossier_run.py` now accepts both consolidated dossier payloads and the reset notebook's embedded raw-payload dossier shape.
+- Dossier ingestion now rejects unsafe `run_id` values, rebuilds a clean staging directory on repeated ingest, and emits clean operator-facing errors for malformed or incomplete dossier inputs.
+- `scripts/register_notebook_run.py` now validates `run_id` values before writing under `outputs/<run_id>/` and records `commit_source` explicitly in run reports.
+- New registration coverage was added in `tests/test_register_dossier_run.py` for reset-notebook dossiers, consolidated dossiers, unsafe `run_id` rejection, and repeated-ingest staging cleanup.
+- `docs/ops/RUNPOD_NOTEBOOK_HANDOFF.md`, `docs/ops/STATUS_BOARD.md`, `docs/ops/REPORTING_CONTRACT.md`, `reports/README.md`, `PROJECT_BRIEF.md`, `docs/ops/TIME_CAPSULE.md`, `tmp/build_v15_reset_notebook.py`, and `notebooks/asnn_goose_v15_reset_master.ipynb` were aligned to the reset-notebook `SMOKE -> DIAGNOSE -> FULL` flow with laptop-side dossier registration preferred and notebook-side registration disabled by default.
+- Fresh verification on 2026-03-11:
+  - `python -m pytest .\tests\test_register_dossier_run.py -q` -> `4 passed`
+  - `python -m pytest .\tests\test_register_notebook_run.py -q` -> `10 passed`
+  - `python -m pytest -q` -> `52 passed`
+  - synthetic dossier CLI registration in a temp repo -> `CONTINUE`
+  - archived dossier CLI registration for `v15_2026-02-23_200258` in a temp repo -> `PAUSE_NEEDS_INPUT`
+
+**Hypotheses**
+- The remaining blocking risk before the user runs the reset notebook is now operational execution quality on RunPod, not repo-side reporting or dossier-ingestion drift.
+
+**Inferences**
+- The next honest step is no longer another local patch cycle; it is the staged RunPod execution path from the reset notebook with an existing checkpoint.
+- The preferred local registration path is now safe enough to recommend, provided the notebook artifacts carry commit + fingerprint metadata.
+
+### Action 6 - Thin RunPod operator notebook
+**Facts**
+- Added `notebooks/asnn_goose_v15_runpod_operator.ipynb` as a thin control notebook for RunPod execution.
+- The new notebook does not duplicate science logic; it validates Phase B parameters, keeps notebook-side registration off, and executes `notebooks/asnn_goose_v15_reset_master.ipynb` through `python -m jupyter nbconvert --execute`.
+- Added `tests/test_runpod_operator_notebook.py` to verify that the operator notebook still targets the canonical reset notebook and keeps `GERHARD_ENABLE_REGISTER_RUN` disabled.
+- Fresh verification on 2026-03-11:
+  - `python -m pytest .\tests\test_runpod_operator_notebook.py -q` -> `1 passed`
+  - `python -c "import json, pathlib; ..."` notebook parse check -> `cells 7`, `valid_json True`
+  - `python -m pytest -q` -> `53 passed`
+
+**Hypotheses**
+- A thin operator notebook is the smallest useful intervention that improves RunPod usability without creating a second authoritative research notebook.
+
+**Inferences**
+- The user can now run Phase B from one notebook surface while preserving the reset notebook as the only source of research logic.
+
+### Action 7 - Concrete Colab T4 single-cell launcher
+**Facts**
+- Added `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb` as a one-cell Colab launcher notebook with `https://github.com/dttdrv/gerhard.git` prefilled.
+- The launcher mounts Google Drive when appropriate, auto-discovers likely v15/v14.3 checkpoints under Colab/Drive paths, keeps notebook-side registration off, and executes `notebooks/asnn_goose_v15_reset_master.ipynb` through `python -m jupyter nbconvert --execute`.
+- Added `tests/test_colab_t4_single_cell_notebook.py` to verify that the notebook stays single-cell, targets the canonical reset notebook, and keeps `GERHARD_ENABLE_REGISTER_RUN` disabled.
+- Fresh verification on 2026-03-11:
+  - `python -m pytest .\tests\test_colab_t4_single_cell_notebook.py -q` -> `1 passed`
+  - `python -m pytest -q` -> `54 passed`
+
+**Hypotheses**
+- A concrete one-cell Colab launcher reduces the last user-side setup burden enough to make Colab T4 a viable execution surface without reintroducing notebook-logic drift.
+
+**Inferences**
+- The user can now execute the staged Phase B flow on Colab with a single notebook file and no repo URL editing.
+
+---
+
 ## [v15] 2026-01-05 - SpikingBrain: Information Encoding Validation
 
 **Status**: IMPLEMENTED - Prerequisite for v16 (sparse ops)

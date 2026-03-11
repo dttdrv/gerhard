@@ -7,12 +7,13 @@ Standardize run inputs and report outputs so user interaction is only needed on 
 All primary execution is notebook-driven (RunPod/Colab/Kaggle notebook passes).
 The repo automation layer does not replace notebook execution; it ingests notebook outputs after the run.
 
-Ingestion command (from repo root):
+Preferred ingestion command (from repo root):
 
-`python3 scripts/register_notebook_run.py --run-id <run_id> --phase <A..K> --source-dir <notebook_output_dir>`
+`python scripts/register_dossier_run.py --dossier <path_to_run_dossier_<run_id>.html> --phase B`
 
-Notebook API option:
-`from scripts.register_notebook_run import register_run`
+Fallback artifact-folder ingestion:
+
+`python scripts/register_notebook_run.py --run-id <run_id> --phase <A..K> --source-dir <notebook_output_dir>`
 
 RunPod handoff reference:
 `docs/ops/RUNPOD_NOTEBOOK_HANDOFF.md`
@@ -69,13 +70,34 @@ Required top-level fields:
 10. `next_steps`
 11. `needs_user_input`
 
+## Reproducibility Metadata Gate
+For new registrations, the report/gate path must surface reproducibility metadata explicitly:
+1. a real git commit carried by the notebook-produced artifacts, and
+2. fingerprint fields `config_sha256` and `recipe_sha256`.
+
+If either item is missing, the registration must not silently serialize that gap as healthy evidence. It must emit a deterministic gate/report issue.
+The gate name for this condition is `reproducibility_metadata`.
+For the current Phase B finish flow, notebook-side registration should remain disabled and local laptop-side registration should be used after dossier export.
+
 ## Required State Updates Per Run
 1. `reports/index.md`
 2. `state/program_status.yaml`
 3. `state/gate_results.yaml`
 4. `docs/ops/STATUS_BOARD.md`
+5. `docs/ops/TIME_CAPSULE.md` (manual/agent update; handoff memory, not script-owned)
+6. `changelog.md` (manual/agent update; dated operational record)
 
 The ingestion script updates (1)-(4) automatically and writes canonical run reports.
+The acting agent or operator must update (5) and (6) after meaningful actions.
+
+## Source Of Truth Order
+1. `reports/index.md`
+2. `state/program_status.yaml`
+3. `state/gate_results.yaml`
+4. `docs/ops/STATUS_BOARD.md`
+
+`PROJECT_BRIEF.md` is a pointer for humans and agents; it is not a co-equal runtime state file.
+`docs/ops/TIME_CAPSULE.md` is the handoff memory and must stay subordinate to the four sources above.
 
 ## Pause Contract
 When decision is `PAUSE_NEEDS_INPUT`, create a concrete request file:
@@ -85,3 +107,7 @@ This file must contain:
 1. Exact missing outputs/decisions needed.
 2. Why they are needed (gate context).
 3. Expected location/format for provided outputs.
+
+## Historical Evidence Note
+- Archived February 2026 runs remain historical evidence and are not to be rewritten retroactively.
+- They should be marked as pre-tightening evidence whenever reproducibility cleanliness is discussed.

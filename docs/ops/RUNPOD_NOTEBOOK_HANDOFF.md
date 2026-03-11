@@ -1,75 +1,108 @@
 # RunPod Notebook Handoff
 
 ## Purpose
-Define the exact flow when execution happens inside notebooks.
+Define the exact execution flow for Phase B when heavy validation or training runs happen on RunPod.
 
-This flow is offline-safe: no external connectivity is required.
+This flow is notebook-first and keeps repo mutation on the laptop side.
 
-## Step 1: Run Notebook
-Execute the relevant notebook pass on RunPod (for example `notebooks/asnn_goose_colab_v15.ipynb`).
-For current Phase B recovery, run the **full notebook end-to-end** (not a smoke pass).
+## Notebook Roles
+- Open `notebooks/asnn_goose_v15_runpod_operator.ipynb` on RunPod as the operator notebook.
+- For Colab T4, use `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb` as the one-cell launcher notebook.
+- The canonical research logic notebook remains `notebooks/asnn_goose_v15_reset_master.ipynb`.
+- Treat `notebooks/asnn_goose_colab_v15.ipynb` as historical evidence, not the current execution target.
 
-For `notebooks/asnn_goose_colab_v15.ipynb`, the final save cell now:
-1. writes the canonical bundle under `outputs/<run_id>/`,
-2. emits required artifacts (`eval_suite.json`, `metrics.json`, `config.yaml`, `seed.txt`, `v15_spikingbrain.json`),
-3. emits run fingerprint fields (`config_sha256`, `recipe_sha256`, and `notebook_sha256` when file discovery succeeds),
-4. generates a single-file dossier with embedded figures and raw data (`run_dossier_<run_id>.html`),
-5. attempts auto-download of that dossier in notebook environments,
-6. attempts `register_run(...)` automatically when `scripts/register_notebook_run.py` is available.
+## Execution Order
+1. Use the operator notebook to run checkpoint-only `SMOKE`.
+2. If `SMOKE` is structurally clean, switch the operator notebook to `DIAGNOSE`.
+3. If `DIAGNOSE` is structurally clean, switch the operator notebook to `FULL`.
+4. Export the final dossier and artifact bundle back to the laptop repo.
+5. Register locally on the laptop from the dossier, then read the repo truth files and stop.
 
-If notebook code was patched after a failed run, restart kernel and rerun from the first cell.
-The v15 runtime fixes modify model/validator definitions and require a clean execution order.
+Do not start with a full rerun. Do not register the run from inside the notebook for the current finish flow.
+The operator notebook executes the canonical reset notebook in a fresh subprocess so each mode starts cleanly without creating a second logic fork.
+The Colab T4 single-cell notebook does the same thing, but also clones `https://github.com/dttdrv/gerhard.git` automatically when the repo is not already present and attempts checkpoint auto-discovery under Google Drive / Colab paths.
 
-## Step 2: Export Notebook Outputs
-At minimum, collect these files from notebook output cells into one folder:
-1. `eval_suite.json`
-2. `metrics.json`
-3. `config.yaml`
-4. `seed.txt`
-5. phase-specific artifact (for Phase B: `v15_spikingbrain.json`)
-6. `run_dossier_<run_id>.html` (single-file detailed report with embedded graphs)
-
-## Step 3: Register The Run In Repo
-From repo root:
-
-Preferred (single-file ingestion):
-
-`python3 scripts/register_dossier_run.py --dossier <path_to_run_dossier_<run_id>.html> --phase B`
-
-Alternative (full artifact folder ingestion):
-
-`python3 scripts/register_notebook_run.py --run-id <run_id> --phase B --source-dir <notebook_output_dir>`
-
-Or directly inside a notebook Python cell (preferred integration):
+## Required Environment Variables
+If you use the operator notebook, edit its config cell instead of manually exporting env vars in the reset notebook.
+The effective env vars passed into the canonical reset notebook are:
 
 ```python
-from pathlib import Path
-from scripts.register_notebook_run import register_run
+import os
 
-result = register_run(
-    run_id="20260223T190000Z_v15",
-    phase="B",
-    source_dir=Path("/workspace/notebook_outputs/v15_run"),
-    repo_root=Path("/workspace/gerhard"),
-    summary="v15 notebook pass on RunPod",
-    next_action="Proceed to next queued autonomous task if gates are green.",
-)
-print(result)
+os.environ["GERHARD_RUN_MODE"] = "SMOKE"  # later: DIAGNOSE, then FULL
+os.environ["GERHARD_RUN_ID"] = "v15_preflight_smoke_<timestamp>"
+os.environ["GERHARD_CHECKPOINT_PATH"] = "/absolute/path/to/your/checkpoint.pt"
+
+os.environ["GERHARD_ENABLE_DOSSIER_EXPORT"] = "1"
+os.environ["GERHARD_ENABLE_REGISTER_RUN"] = "0"
+os.environ["GERHARD_ENABLE_AUTODOWNLOAD_DOSSIER"] = "1"
+
+os.environ["GERHARD_BATCH_SIZE"] = "8"
+os.environ["GERHARD_SMOKE_BATCHES"] = "2"
+os.environ["GERHARD_FULL_BATCHES_SMOKE"] = "4"
 ```
 
-Either command will:
-1. Archive outputs into `outputs/<run_id>/`.
-2. Generate reports under `reports/<YYYY>/<MM>/`.
-3. Update `reports/index.md`.
-4. Update `state/program_status.yaml`.
-5. Update `state/gate_results.yaml`.
-6. Emit needs-input file automatically if red gates are detected.
+Mode-specific overrides:
 
-If the notebook run predates dossier support, generate one in-repo:
+- `SMOKE`
+  - `GERHARD_RUN_MODE=SMOKE`
+  - `GERHARD_RUN_ID=v15_preflight_smoke_<timestamp>`
+- `DIAGNOSE`
+  - `GERHARD_RUN_MODE=DIAGNOSE`
+  - `GERHARD_RUN_ID=v15_preflight_diagnose_<timestamp>`
+  - `GERHARD_FULL_BATCHES_DIAGNOSE=40`
+- `FULL`
+  - `GERHARD_RUN_MODE=FULL`
+  - `GERHARD_RUN_ID=v15_full_<timestamp>`
+  - `GERHARD_FULL_BATCHES=20`
 
-`python3 scripts/generate_run_dossier.py --run-dir outputs/<run_id> --phase B`
+If GPU memory is tighter than expected, reduce only `GERHARD_BATCH_SIZE` in this order:
+1. `4`
+2. `2`
 
-## Step 4: Read Status
-1. Open `reports/index.md` for latest decision.
-2. Open `docs/ops/STATUS_BOARD.md` for program-level view.
-3. Open `outputs/<run_id>/run_dossier_<run_id>.html` for a fully self-contained, detailed run report.
+Do not change notebook logic, thresholds, or model math during these runs.
+
+## Structural Stop Conditions
+Stop after `SMOKE` or `DIAGNOSE` if any of these fail:
+- checkpoint does not load
+- student forward fails
+- spike info is missing
+- logits contain NaN or Inf
+- teacher hidden states / activations are missing
+- zero-batch or empty-loader guards trigger
+- expected output files are missing
+
+Red MI/CKA thresholds alone are not a structural stop condition. They are scientific evidence, not tooling failure.
+
+## Files To Bring Back To The Laptop
+Keep these files together in one folder:
+1. `run_dossier_<run_id>.html`
+2. `eval_suite.json`
+3. `metrics.json`
+4. `config.yaml`
+5. `seed.txt`
+6. `v15_spikingbrain.json`
+
+## Laptop-Side Registration
+Preferred:
+
+`python scripts/register_dossier_run.py --dossier <path_to_run_dossier_<run_id>.html> --phase B`
+
+Fallback if dossier ingestion is not possible:
+
+`python scripts/register_notebook_run.py --run-id <run_id> --phase B --source-dir <artifact_dir>`
+
+The preferred dossier ingestion path now:
+- accepts both consolidated dossiers and reset-notebook raw-payload dossiers,
+- rejects unsafe `run_id` values,
+- reconstructs into a clean staging directory,
+- requires artifact-provided commit plus fingerprint fields for a green reproducibility gate.
+
+## Read The Truth Files And Stop
+After local registration, inspect:
+1. `reports/index.md`
+2. `state/program_status.yaml`
+3. `state/gate_results.yaml`
+4. `docs/ops/STATUS_BOARD.md`
+
+That is the stopping point for this phase execution cycle.

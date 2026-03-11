@@ -52,7 +52,7 @@ INSPECTED_FILES = [
     "docs/ops/RUNPOD_NOTEBOOK_HANDOFF.md",
     "state/gate_results.yaml",
     "reports/index.md",
-    "notebooks/asnn_goose_colab_v15.ipynb",
+    "notebooks/asnn_goose_v15_reset_master.ipynb",
     "src/evaluation/spiking_brain.py",
     "src/evaluation/spike_analysis.py",
     "src/models/asnn_goose.py",
@@ -84,7 +84,7 @@ repo_audit_summary = {
     "observed_local_modifications_before_authoring": [
         "docs/ops/STATUS_BOARD.md",
         "docs/ops/RUNPOD_NOTEBOOK_HANDOFF.md",
-        "notebooks/asnn_goose_colab_v15.ipynb",
+        "notebooks/asnn_goose_v15_reset_master.ipynb",
     ],
 }
 
