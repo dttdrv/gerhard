@@ -9,6 +9,7 @@
 - Current active phase: **B_v15_spikingbrain_validation**
 - Latest known best: **v14.3 PPL 306.89**
 - Latest authoritative run remains `v15_2026-02-23_200258`, but it is pre-tightening evidence for reproducibility metadata.
+- No committed `v14.3` / `v15` checkpoint exists in the repo, so the reset-notebook checkpoint-preflight path is not the default next step anymore.
 - Add-on scaffolds:
   - `eval/` scaffold: present
   - `data/mixture.yaml`: present
@@ -50,6 +51,13 @@
 - It clones `https://github.com/dttdrv/gerhard.git` when needed, mounts Google Drive when appropriate, auto-discovers a likely v15/v14.3 checkpoint, keeps notebook-side registration off, and executes the canonical reset notebook in one cell.
 - `tests/test_colab_t4_single_cell_notebook.py` now verifies that the notebook stays single-cell, targets the canonical reset notebook, and keeps dossier-first local registration assumptions intact.
 
+## Fresh-Rerun Colab Launcher (2026-03-11)
+- Added `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` as the default fresh-rerun launcher when no checkpoint exists.
+- The launcher executes `notebooks/asnn_goose_colab_v15.ipynb` in a clean subprocess, injects `GIT_COMMIT` plus env-controlled training knobs, keeps notebook-side registration off, and zips the run artifact directory for laptop-side ingestion.
+- `notebooks/asnn_goose_colab_v15.ipynb` now honors env overrides for `SEED`, `distill_steps`, `batch_size`, `accumulation_steps`, `eval_interval`, `run_id`, notebook-side registration, and dossier auto-download.
+- The fresh training notebook now copies `outputs/checkpoints/v15_best.pt` into the per-run artifact bundle so the rerun itself produces the next checkpoint evidence.
+- `tests/test_colab_fresh_rerun_single_cell_notebook.py` now verifies the launcher target and the training notebook’s env-controlled registration/knob surface.
+
 ## Preflight Adapter Update (2026-03-11)
 - `src/evaluation/spiking_brain.py` now accepts both Hugging Face-style `hidden_states` outputs and repo-native `TeacherModel` `layer_activations` during representation collection.
 - `src/evaluation/spiking_brain.py` now aggregates MI/CKA across mapped layers and both `k` / `v` spike channels in the same core shape as the reset notebook.
@@ -57,8 +65,9 @@
 - The next bounded step is now checkpoint-only `SMOKE` / `DIAGNOSE` validation against an existing checkpoint, not another adapter build pass.
 
 ## Live Engineering Update (2026-03-11)
-- Canonical execution notebook: `notebooks/asnn_goose_v15_reset_master.ipynb`
-- Historical notebook retained for evidence only: `notebooks/asnn_goose_colab_v15.ipynb`
+- Canonical checkpoint-validation notebook: `notebooks/asnn_goose_v15_reset_master.ipynb`
+- Current fresh-training notebook logic: `notebooks/asnn_goose_colab_v15.ipynb`
+- Default fresh-rerun execution surface: `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb`
 - Runtime hardening applied:
   - dependency bootstrap with optional plotting fallback,
   - `return_spike_info` support added in student/layer forward path,
@@ -71,6 +80,11 @@
   - added spike semantic alignment loss (teacher-to-spike ternary target alignment),
   - expanded training logs with semantic-loss curves,
   - fixed validator bias by using both `k` and `v` spikes and robust MI discretization.
+- Fresh-rerun launcher hardening applied:
+  - repo clone + commit capture on Colab,
+  - env-controlled training overrides for memory-constrained GPUs,
+  - notebook-side registration disabled by default,
+  - per-run checkpoint copy into the artifact bundle.
 - Reset-notebook fingerprint logic exists in `notebooks/asnn_goose_v15_reset_master.ipynb`, but the checked February 2026 archived artifacts do not yet satisfy the tightened reproducibility contract.
 - Latest execution remains the RunPod-ingested `v15_2026-02-23_200258`.
 - Canonical archived bundle for that run is limited to the checked files under `outputs/v15_2026-02-23_200258/`; do not assume missing fingerprint fields or `figures_detailed/*` exist unless a newer run proves it.
@@ -80,7 +94,7 @@
 | Phase | Name | Status | Owner State |
 |------|------|--------|-------------|
 | A | Engineering Guardrails | IN PROGRESS | Scaffolds in place; full reproducibility guardrails pending. |
-| B | v15 SpikingBrain Validation | BLOCKED | Latest full rerun still below MI/CKA thresholds; repo-native preflight adapter landed and checkpoint-only smoke/diagnose is now pending. |
+| B | v15 SpikingBrain Validation | BLOCKED | Latest full rerun still below MI/CKA thresholds; no repo checkpoint exists, so the next step is a fresh Colab rerun that produces a new dossier bundle and `v15_best.pt`. |
 | C | Temporal Coding Proof | NOT STARTED | Waiting for B gate maturity. |
 | D | v16 Sparse Ops | NOT STARTED | Blocked by B pass. |
 | E | v17 Efficiency | NOT STARTED | Blocked by D readiness. |
@@ -95,15 +109,13 @@
 1. RED: `phase_b_scientific_thresholds` failed on latest run (`mutual_information`, `cka_mean`).
 2. YELLOW: archived February 2026 authoritative evidence predates the March 11 reproducibility-gate tightening; the next authoritative run must carry commit + fingerprint metadata cleanly.
 3. YELLOW: scorecard baselines are not yet established for H regression gates.
+4. YELLOW: no repo-local checkpoint exists, so the checkpoint-preflight notebook path is blocked pending a fresh rerun or recovered external checkpoint.
 
 ## Next Autonomous Actions
-1. Run checkpoint-only `SMOKE` on RunPod from `notebooks/asnn_goose_v15_runpod_operator.ipynb`, with notebook-side registration off.
-2. If `SMOKE` is structurally clean, switch the operator notebook to `DIAGNOSE`; if that is structurally clean, continue to `FULL`.
-3. Bring the dossier and artifact bundle back to the laptop and register locally with `scripts/register_dossier_run.py`.
-4. Read `reports/index.md`, `state/program_status.yaml`, `state/gate_results.yaml`, and `docs/ops/STATUS_BOARD.md`, then stop.
-
-Colab alternative:
-- Run the same staged flow from `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb` on a T4 instance if Colab is the preferred execution surface.
+1. Run `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` on Colab and let it execute `notebooks/asnn_goose_colab_v15.ipynb` with notebook-side registration off.
+2. Bring the dossier, artifact bundle, and bundled `v15_best.pt` back to the laptop and register locally with `scripts/register_dossier_run.py`.
+3. Read `reports/index.md`, `state/program_status.yaml`, `state/gate_results.yaml`, and `docs/ops/STATUS_BOARD.md`, then stop.
+4. If the fresh rerun yields a usable checkpoint but Phase B is still structurally ambiguous, use `notebooks/asnn_goose_v15_runpod_operator.ipynb` plus `notebooks/asnn_goose_v15_reset_master.ipynb` for checkpoint-only follow-on diagnosis.
 
 ## Key Links
 - Operating model: `docs/ops/AUTONOMY_OPERATING_MODEL.md`

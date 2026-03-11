@@ -112,6 +112,21 @@
 **Inferences**
 - The user can now execute the staged Phase B flow on Colab with a single notebook file and no repo URL editing.
 
+### Action 8 - Fresh-rerun launcher for the no-checkpoint case
+**Facts**
+- Verified on 2026-03-11 that the repo contains no committed `*.pt`, `*.pth`, or `*.ckpt` checkpoint compatible with the reset-notebook preflight path.
+- `notebooks/asnn_goose_colab_v15.ipynb` is the only current notebook that still contains the full distillation/training path, so it is now the active training target for a fresh rerun.
+- `notebooks/asnn_goose_colab_v15.ipynb` now honors env overrides for `SEED`, `distill_steps`, `batch_size`, `accumulation_steps`, `eval_interval`, `run_id`, notebook-side registration, and dossier auto-download.
+- `notebooks/asnn_goose_colab_v15.ipynb` now copies `outputs/checkpoints/v15_best.pt` into the per-run artifact bundle.
+- Added `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` as the concrete one-cell Colab launcher for the fresh-rerun path.
+- Added `tests/test_colab_fresh_rerun_single_cell_notebook.py` to verify the launcher target, disabled notebook-side registration, env-controlled training knobs, and checkpoint bundling contract.
+
+**Hypotheses**
+- The smallest honest way to get new Phase B evidence without an existing checkpoint is to keep the old training notebook’s science path but wrap it in a launcher that enforces the newer evidence-handling rules.
+
+**Inferences**
+- The default next action is no longer checkpoint-only `SMOKE -> DIAGNOSE -> FULL`; it is a fresh Colab rerun that produces a new dossier bundle and `v15_best.pt`, followed by laptop-side registration.
+
 ---
 
 ## [v15] 2026-01-05 - SpikingBrain: Information Encoding Validation

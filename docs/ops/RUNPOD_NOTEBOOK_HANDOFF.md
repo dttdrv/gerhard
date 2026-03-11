@@ -6,73 +6,61 @@ Define the exact execution flow for Phase B when heavy validation or training ru
 This flow is notebook-first and keeps repo mutation on the laptop side.
 
 ## Notebook Roles
-- Open `notebooks/asnn_goose_v15_runpod_operator.ipynb` on RunPod as the operator notebook.
-- For Colab T4, use `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb` as the one-cell launcher notebook.
-- The canonical research logic notebook remains `notebooks/asnn_goose_v15_reset_master.ipynb`.
-- Treat `notebooks/asnn_goose_colab_v15.ipynb` as historical evidence, not the current execution target.
+- Fresh rerun on Colab: use `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb`.
+- Checkpoint-only validation on RunPod: use `notebooks/asnn_goose_v15_runpod_operator.ipynb`.
+- Current fresh-training research logic lives in `notebooks/asnn_goose_colab_v15.ipynb`, but direct human execution should go through the fresh-rerun launcher.
+- `notebooks/asnn_goose_v15_reset_master.ipynb` remains the checkpoint-gated validation notebook, not the default fresh-training target.
 
 ## Execution Order
-1. Use the operator notebook to run checkpoint-only `SMOKE`.
-2. If `SMOKE` is structurally clean, switch the operator notebook to `DIAGNOSE`.
-3. If `DIAGNOSE` is structurally clean, switch the operator notebook to `FULL`.
-4. Export the final dossier and artifact bundle back to the laptop repo.
-5. Register locally on the laptop from the dossier, then read the repo truth files and stop.
+1. Run `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` on Colab.
+2. Let the launcher clone `https://github.com/dttdrv/gerhard.git` if needed, set env overrides, and execute `notebooks/asnn_goose_colab_v15.ipynb` in a clean subprocess.
+3. Bring the final dossier and artifact bundle back to the laptop repo.
+4. Register locally on the laptop from the dossier, then read the repo truth files and stop.
 
-Do not start with a full rerun. Do not register the run from inside the notebook for the current finish flow.
-The operator notebook executes the canonical reset notebook in a fresh subprocess so each mode starts cleanly without creating a second logic fork.
-The Colab T4 single-cell notebook does the same thing, but also clones `https://github.com/dttdrv/gerhard.git` automatically when the repo is not already present and attempts checkpoint auto-discovery under Google Drive / Colab paths.
+Why this changed:
+- there is no repo-local checkpoint available for the reset notebook path right now
+- `notebooks/asnn_goose_v15_reset_master.ipynb` is explicitly checkpoint-gated
+- the fresh rerun must therefore start from the older training-capable notebook, but with notebook-side registration disabled and dossier-first local ingestion preserved
 
-## Required Environment Variables
-If you use the operator notebook, edit its config cell instead of manually exporting env vars in the reset notebook.
-The effective env vars passed into the canonical reset notebook are:
+## Fresh-Rerun Launcher Knobs
+Edit only the top constants in `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` when needed:
 
 ```python
-import os
-
-os.environ["GERHARD_RUN_MODE"] = "SMOKE"  # later: DIAGNOSE, then FULL
-os.environ["GERHARD_RUN_ID"] = "v15_preflight_smoke_<timestamp>"
-os.environ["GERHARD_CHECKPOINT_PATH"] = "/absolute/path/to/your/checkpoint.pt"
-
-os.environ["GERHARD_ENABLE_DOSSIER_EXPORT"] = "1"
-os.environ["GERHARD_ENABLE_REGISTER_RUN"] = "0"
-os.environ["GERHARD_ENABLE_AUTODOWNLOAD_DOSSIER"] = "1"
-
-os.environ["GERHARD_BATCH_SIZE"] = "8"
-os.environ["GERHARD_SMOKE_BATCHES"] = "2"
-os.environ["GERHARD_FULL_BATCHES_SMOKE"] = "4"
+RUN_LABEL = "fresh_rerun"
+SEED = 42
+DISTILL_STEPS_OVERRIDE = ""
+BATCH_SIZE_OVERRIDE = ""
+ACCUMULATION_STEPS_OVERRIDE = ""
+EVAL_INTERVAL_OVERRIDE = ""
 ```
 
-Mode-specific overrides:
+The launcher passes these into the training notebook:
+- `GERHARD_RUN_ID`
+- `GERHARD_SEED`
+- `GERHARD_BATCH_SIZE`
+- `GERHARD_ACCUMULATION_STEPS`
+- `GERHARD_EVAL_INTERVAL`
+- `GERHARD_DISTILL_STEPS` only when overridden
+- `GERHARD_ENABLE_REGISTER_RUN=0`
+- `GERHARD_ENABLE_AUTODOWNLOAD_DOSSIER=0`
+- `GERHARD_NOTEBOOK_PATH`
+- `GIT_COMMIT`
 
-- `SMOKE`
-  - `GERHARD_RUN_MODE=SMOKE`
-  - `GERHARD_RUN_ID=v15_preflight_smoke_<timestamp>`
-- `DIAGNOSE`
-  - `GERHARD_RUN_MODE=DIAGNOSE`
-  - `GERHARD_RUN_ID=v15_preflight_diagnose_<timestamp>`
-  - `GERHARD_FULL_BATCHES_DIAGNOSE=40`
-- `FULL`
-  - `GERHARD_RUN_MODE=FULL`
-  - `GERHARD_RUN_ID=v15_full_<timestamp>`
-  - `GERHARD_FULL_BATCHES=20`
+Default GPU policy:
+- T4: batch size `4`, accumulation `4`
+- L4: batch size `8`, accumulation `2`
+- unknown GPU: batch size `4`, accumulation `2`
 
-If GPU memory is tighter than expected, reduce only `GERHARD_BATCH_SIZE` in this order:
-1. `4`
-2. `2`
-
-Do not change notebook logic, thresholds, or model math during these runs.
+Do not change notebook logic, thresholds, or model math during the rerun.
 
 ## Structural Stop Conditions
-Stop after `SMOKE` or `DIAGNOSE` if any of these fail:
-- checkpoint does not load
-- student forward fails
-- spike info is missing
-- logits contain NaN or Inf
-- teacher hidden states / activations are missing
-- zero-batch or empty-loader guards trigger
-- expected output files are missing
+Stop if any of these fail:
+- the training notebook exits non-zero
+- any required output file is missing
+- `v15_best.pt` is missing from the per-run artifact bundle
+- the notebook emits a traceback before dossier generation
 
-Red MI/CKA thresholds alone are not a structural stop condition. They are scientific evidence, not tooling failure.
+Red MI/CKA thresholds remain scientific evidence, not tooling failure.
 
 ## Files To Bring Back To The Laptop
 Keep these files together in one folder:
@@ -82,6 +70,9 @@ Keep these files together in one folder:
 4. `config.yaml`
 5. `seed.txt`
 6. `v15_spikingbrain.json`
+7. `v15_best.pt`
+
+The fresh-rerun launcher zips the run artifact directory automatically after a structurally complete run.
 
 ## Laptop-Side Registration
 Preferred:
@@ -97,6 +88,12 @@ The preferred dossier ingestion path now:
 - rejects unsafe `run_id` values,
 - reconstructs into a clean staging directory,
 - requires artifact-provided commit plus fingerprint fields for a green reproducibility gate.
+
+## Checkpoint-Only Path After Fresh Rerun
+Once the fresh rerun produces a new `v15_best.pt`, the checkpoint-only path becomes available again:
+1. use `notebooks/asnn_goose_v15_runpod_operator.ipynb`
+2. point it at the exported checkpoint
+3. run `SMOKE -> DIAGNOSE -> FULL` against `notebooks/asnn_goose_v15_reset_master.ipynb` only if additional diagnosis is still needed
 
 ## Read The Truth Files And Stop
 After local registration, inspect:

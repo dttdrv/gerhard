@@ -28,7 +28,7 @@
 - Root `LOG.md` is intentionally deferred in Phase 0 Cycle 1.
 
 ## Current Bounded Next Step
-- Run checkpoint-only `SMOKE` on RunPod from `notebooks/asnn_goose_v15_runpod_operator.ipynb`, which executes `notebooks/asnn_goose_v15_reset_master.ipynb` with an existing checkpoint and `GERHARD_ENABLE_REGISTER_RUN=0`.
-- Or run the same staged flow on Colab T4 from `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb`, which clones the repo if needed and auto-discovers a likely checkpoint.
-- If `SMOKE` is structurally clean, rerun from a fresh kernel in `DIAGNOSE`, then continue to `FULL`.
+- Fact: there is no committed `v14.3` / `v15` checkpoint in this repo, so the checkpoint-only preflight path cannot run as the default next step.
+- Run a fresh rerun from `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` on Colab. That launcher executes `notebooks/asnn_goose_colab_v15.ipynb` with notebook-side registration disabled and exports a dossier bundle for laptop-side registration.
 - Register the resulting dossier locally on the laptop with `scripts/register_dossier_run.py`, then read the canonical truth files and stop.
+- After the fresh rerun produces `v15_best.pt`, the checkpoint-only reset notebook path becomes usable again for follow-on diagnosis if needed.
