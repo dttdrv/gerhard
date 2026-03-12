@@ -141,6 +141,24 @@
 **Inferences**
 - After the next rerun, post-run diagnosis should be possible from the bundle itself instead of requiring another notebook reconstruction pass.
 
+### Action 10 - Supervisor report package
+**Facts**
+- Added `reports/2026/03/phase_b_supervisor_report_2026-03-12.md` as the supervisor-facing status report generated from the canonical truth stack and the latest authoritative Phase B report.
+- Added `reports/2026/03/phase_b_supervisor_report_2026-03-12.html` as a sendable HTML companion of the same package for forwarding or print export.
+- The report package records the current authoritative run (`v15_2026-02-23_200258`), the exact red scientific metrics (`mutual_information=0.0435`, `cka_mean=0.0196`), the March 11 hardening work, the no-checkpoint constraint, and the bounded next action of one fresh Colab rerun.
+- Fresh verification on 2026-03-12:
+  - `git rev-parse HEAD` -> `954588c3bffa01e2e9559b0e54f7ff4d86e4d557`
+  - `git status --short` -> clean worktree before report packaging
+  - `python -m pytest -q` -> `56 passed`
+- External provenance used in the report package:
+  - Jupyter nbclient documentation for executed-notebook persistence: `https://github.com/jupyter/nbclient/blob/main/docs/client.rst`
+
+**Hypotheses**
+- A supervisor-facing package that cleanly separates current facts from hypotheses and inferences will reduce the risk of the March 11 engineering hardening being mistaken for a scientific pass.
+
+**Inferences**
+- The repo now contains a sendable supervisor artifact that can be shared without restitching the project state by hand.
+
 ---
 
 ## [v15] 2026-01-05 - SpikingBrain: Information Encoding Validation

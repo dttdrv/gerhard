@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Gerhard Phase B Supervisor Report - 2026-03-12</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f1eb;
+      --paper: #fffdfa;
+      --ink: #1e1f20;
+      --muted: #5a6168;
+      --line: #d7d1c6;
+      --accent: #8b2e1a;
+      --ok: #166534;
+      --warn: #92400e;
+      --bad: #991b1b;
+    }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #efe7dc 0%, var(--bg) 100%);
+      color: var(--ink);
+      font: 16px/1.55 Georgia, "Times New Roman", serif;
+    }
+    main {
+      max-width: 980px;
+      margin: 32px auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 60px rgba(30, 31, 32, 0.08);
+      padding: 40px 48px;
+    }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { margin-top: 0; font-size: 2.2rem; }
+    h2 {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      font-size: 1.35rem;
+    }
+    .meta, .muted { color: var(--muted); }
+    .callout {
+      padding: 16px 18px;
+      border-left: 4px solid var(--accent);
+      background: #fbf3ee;
+      margin: 20px 0;
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .green { background: #e8f5ea; color: var(--ok); }
+    .red { background: #fdecec; color: var(--bad); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 20px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f7f2ea; }
+    code { font-family: Consolas, "Courier New", monospace; font-size: 0.95em; }
+    ul, ol { padding-left: 1.25rem; }
+    .footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Gerhard Phase B Supervisor Report</h1>
+    <p class="meta">Prepared: 2026-03-12<br>Prepared from canonical repo state at commit <code>954588c3bffa01e2e9559b0e54f7ff4d86e4d557</code></p>
+
+    <div class="callout">
+      <strong>Bottom line:</strong> Gerhard is currently blocked in <code>B_v15_spikingbrain_validation</code>. The latest authoritative run remains <code>v15_2026-02-23_200258</code> and failed the scientific thresholds on mutual information and CKA. Since then, the repository has been materially hardened for evidence integrity and fresh rerun execution, but no new scientific run has yet been executed under the tightened contract.
+    </div>
+
+    <h2>1. Executive Summary</h2>
+    <p>The current block is scientific, not administrative. The latest Phase B dossier was structurally complete and numerically sane, but it failed the scientific gate on two key metrics:</p>
+    <ul>
+      <li><code>mutual_information = 0.0435</code> against a threshold of <code>&gt; 0.10</code></li>
+      <li><code>cka_mean = 0.0196</code> against a threshold of <code>&gt; 0.30</code></li>
+    </ul>
+    <p>Since that run, the repo has been repaired and hardened across reporting, dossier ingestion, evaluator compatibility, notebook launching, and fresh-rerun evidence packaging. The next honest step is now one bounded fresh rerun on Colab GPU, followed by laptop-side dossier registration.</p>
+
+    <h2>2. Current Authoritative Status</h2>
+    <p>Canonical source order:</p>
+    <ol>
+      <li><code>reports/index.md</code></li>
+      <li><code>state/program_status.yaml</code></li>
+      <li><code>state/gate_results.yaml</code></li>
+      <li><code>docs/ops/STATUS_BOARD.md</code></li>
+    </ol>
+    <p>Current status from those sources:</p>
+    <ul>
+      <li>Current phase: <code>B_v15_spikingbrain_validation</code></li>
+      <li>Latest authoritative run: <code>v15_2026-02-23_200258</code></li>
+      <li>Decision: <span class="status red">PAUSE_NEEDS_INPUT</span></li>
+      <li>Program state: Phase B blocked</li>
+    </ul>
+
+    <table>
+      <thead>
+        <tr><th>Gate</th><th>Status</th><th>Evidence</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>required_artifacts_presence</code></td><td><span class="status green">green</span></td><td>all required artifacts present</td></tr>
+        <tr><td><code>phase_b_artifacts_presence</code></td><td><span class="status green">green</span></td><td>all phase-specific artifacts present</td></tr>
+        <tr><td><code>metrics_numerical_sanity</code></td><td><span class="status green">green</span></td><td>numeric values finite in inspected JSON artifacts</td></tr>
+        <tr><td><code>phase_b_scientific_thresholds</code></td><td><span class="status red">red</span></td><td><code>mutual_information=0.0435 &lt;= 0.10; cka_mean=0.0196 &lt;= 0.30</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. What The February Run Proved</h2>
+    <ul>
+      <li>The Phase B path could produce a complete dossier and expected artifacts.</li>
+      <li>The failure was not caused by missing files.</li>
+      <li>The inspected JSON outputs were numerically sane.</li>
+      <li>The scientific thresholds still failed on MI and CKA.</li>
+    </ul>
+    <p>What it did not prove:</p>
+    <ul>
+      <li>It did not satisfy the March 11 tightened reproducibility contract because the archived JSON still records <code>commit: unknown</code>.</li>
+      <li>It did not test the March 11 evaluator seam repairs.</li>
+      <li>It did not produce the deeper evidence bundle now required for detailed diagnosis.</li>
+    </ul>
+
+    <h2>4. Engineering Work Completed Since The Latest Authoritative Run</h2>
+    <ul>
+      <li>Reporting and dossier ingestion hardening in <code>scripts/register_notebook_run.py</code> and <code>scripts/register_dossier_run.py</code>.</li>
+      <li>Evaluator seam repair in <code>src/evaluation/spiking_brain.py</code> so repo-native teacher outputs and notebook-parity MI/CKA aggregation are supported.</li>
+      <li>Thin operator and Colab launch notebooks added for both checkpoint and no-checkpoint execution surfaces.</li>
+      <li>Fresh-rerun path expanded to emit a deep evidence bundle plus <code>v15_best.pt</code>.</li>
+    </ul>
+
+    <p>The deep evidence bundle now expected from the next rerun includes:</p>
+    <ul>
+      <li><code>run_dossier_&lt;run_id&gt;.html</code>, <code>eval_suite.json</code>, <code>metrics.json</code>, <code>config.yaml</code>, <code>seed.txt</code>, <code>v15_spikingbrain.json</code>, <code>results.json</code>, <code>v15_best.pt</code></li>
+      <li><code>environment.json</code>, <code>training_curves.json</code>, <code>hardware_stats.json</code>, <code>spike_analysis.json</code>, <code>validation_tests.json</code>, <code>control_suite.json</code>, <code>checkpoint_metadata.json</code>, <code>figures_index.json</code>, <code>detailed_results.json</code>, <code>artifact_manifest.json</code></li>
+      <li><code>executed_training_notebook.ipynb</code>, <code>operator_env.json</code>, <code>launcher_bundle_manifest.json</code></li>
+    </ul>
+
+    <h2>5. Current Verification State</h2>
+    <ul>
+      <li><code>git rev-parse HEAD</code> -&gt; <code>954588c3bffa01e2e9559b0e54f7ff4d86e4d557</code></li>
+      <li><code>git status --short</code> -&gt; clean worktree before report packaging</li>
+      <li><code>python -m pytest -q</code> -&gt; <code>56 passed</code></li>
+    </ul>
+    <p>These checks show the repo is engineering-ready for the next experiment. They do not upgrade the scientific state.</p>
+
+    <h2>6. Why A Fresh Rerun Is Required</h2>
+    <ul>
+      <li>There is no committed <code>v14.3</code> or <code>v15</code> checkpoint in the repo.</li>
+      <li>The reset-notebook preflight path is therefore not the default next step.</li>
+      <li>The honest next experiment is a fresh rerun that generates both a new dossier and a new checkpoint.</li>
+    </ul>
+    <p>The current default execution surface is the launcher <code>notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb</code>, which executes <code>notebooks/asnn_goose_colab_v15.ipynb</code> and keeps notebook-side registration off.</p>
+
+    <h2>7. Recommended Next Action</h2>
+    <ol>
+      <li>Run one fresh Colab rerun through <code>notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb</code>.</li>
+      <li>Require the full deep evidence bundle and bundled <code>v15_best.pt</code>.</li>
+      <li>Bring the bundle back to the laptop.</li>
+      <li>Register locally with <code>python scripts/register_dossier_run.py --dossier &lt;path_to_run_dossier_&lt;run_id&gt;.html&gt; --phase B</code>.</li>
+      <li>Re-read the canonical truth files and stop.</li>
+    </ol>
+
+    <h2>8. Supervisor Decision Points</h2>
+    <ol>
+      <li>Approve one fresh Colab rerun as the next authoritative experiment.</li>
+      <li>Treat the current repository as engineering-ready but scientifically blocked.</li>
+      <li>Require the next run to be judged from the registered dossier and state files, not from notebook impressions alone.</li>
+      <li>Treat the February evidence as historically useful but not reproducibility-clean under the tightened March 11 standard.</li>
+    </ol>
+
+    <h2>9. Facts, Hypotheses, Inferences</h2>
+    <h3>Facts</h3>
+    <ul>
+      <li>The latest authoritative run is <code>v15_2026-02-23_200258</code>.</li>
+      <li>That run failed on <code>mutual_information=0.0435</code> and <code>cka_mean=0.0196</code>.</li>
+      <li>Artifact presence and numeric sanity were green.</li>
+      <li>No committed checkpoint suitable for checkpoint-only preflight exists in the repo.</li>
+      <li>The repo now has a fresh-rerun launcher and a much richer evidence-bundle contract.</li>
+      <li>The repo test suite passed at <code>56 passed</code> immediately before this package.</li>
+    </ul>
+
+    <h3>Hypotheses</h3>
+    <ul>
+      <li>The evaluator seam repairs and evidence hardening reduce the chance that the next failure is tooling drift rather than actual model behavior.</li>
+      <li>The deeper evidence bundle will materially improve post-run diagnosis quality.</li>
+      <li>The next rerun may still fail scientifically; if so, the blocker is scientific rather than primarily measurement-related.</li>
+    </ul>
+
+    <h3>Inferences</h3>
+    <ul>
+      <li>No honest status upgrade is possible without a fresh rerun.</li>
+      <li>The repo is ready for that rerun from an engineering and evidence-integrity perspective.</li>
+      <li>The correct next unit of work is one bounded rerun, not another local patch cycle.</li>
+    </ul>
+
+    <h2>10. External Provenance Note</h2>
+    <p>The current launcher approach executes notebooks programmatically and preserves the executed notebook artifact. That is consistent with official Jupyter notebook-execution guidance, which documents execution followed by saving the executed notebook with outputs. Source used for this external note: <a href="https://github.com/jupyter/nbclient/blob/main/docs/client.rst">Jupyter nbclient documentation</a>.</p>
+
+    <h2>11. Source Pointers</h2>
+    <ul>
+      <li><code>reports/index.md</code></li>
+      <li><code>state/program_status.yaml</code></li>
+      <li><code>state/gate_results.yaml</code></li>
+      <li><code>docs/ops/STATUS_BOARD.md</code></li>
+      <li><code>docs/ops/TIME_CAPSULE.md</code></li>
+      <li><code>PROJECT_BRIEF.md</code></li>
+      <li><code>reports/2026/02/v15_2026-02-23_200258.md</code></li>
+      <li><code>reports/2026/02/v15_2026-02-23_200258.json</code></li>
+      <li><code>docs/ops/RUNPOD_NOTEBOOK_HANDOFF.md</code></li>
+    </ul>
+
+    <div class="footer">
+      The program is not blocked because the repo is disorganized. It is blocked because the last authoritative scientific result was red, and no new authoritative rerun has yet been executed under the improved evidence contract. The engineering side is now sufficiently tightened to justify one fresh rerun. That is the next honest step.
+    </div>
+  </main>
+</body>
+</html>

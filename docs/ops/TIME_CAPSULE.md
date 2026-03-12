@@ -1,7 +1,7 @@
 # Gerhard Time Capsule
 
 ## current mission
-- Fact: complete Phase 0 Cycle 1 truth + gate drift alignment without changing model math.
+- Fact: Phase 0 Cycle 1 truth + gate drift alignment is complete at the repo level; the current mission is to communicate the blocked state clearly and execute one fresh rerun under the tightened evidence contract.
 - Fact: keep the existing canonical truth stack primary and add handoff memory around it, not instead of it.
 - Fact: `src/evaluation/spiking_brain.py` now accepts both Hugging Face-style `hidden_states` outputs and repo-native `TeacherModel` `layer_activations` for representation collection.
 - Fact: `src/evaluation/spiking_brain.py` now aggregates MI/CKA across mapped layers and both `k` / `v` spike channels in the same core shape as the reset notebook.
@@ -9,6 +9,7 @@
 - Fact: `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` now exists as the default Colab fresh-rerun launcher.
 - Fact: `notebooks/asnn_goose_colab_v15.ipynb` is again an active execution target, but only through the launcher and with notebook-side registration disabled by env.
 - Fact: the fresh-rerun path now emits a much more detailed evidence bundle, including environment, training-curve, hardware-stats, spike-analysis, validation-test, control-suite, checkpoint-metadata, figures-index, detailed-results, and manifest artifacts, plus launcher-copied executed-notebook and env snapshots.
+- Fact: `reports/2026/03/phase_b_supervisor_report_2026-03-12.md` and `.html` now exist as the supervisor-facing status package for the current blocked-but-rerun-ready state.
 - Inference: the next capability increase must come from a fresh rerun that produces a new checkpoint and dossier bundle, not from theorizing about the existing red run.
 
 ## current blocker
@@ -38,6 +39,7 @@
 - Fact: `notebooks/asnn_goose_v15_colab_t4_single_cell.ipynb` now exists as the concrete Colab T4 one-cell launcher with the repo remote prefilled and checkpoint auto-discovery.
 - Fact: `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` now exists as the concrete fresh-rerun Colab launcher for the no-checkpoint case.
 - Fact: the launcher now copies `executed_training_notebook.ipynb` and `operator_env.json` into the final run bundle and writes `launcher_bundle_manifest.json`.
+- Fact: the current supervisor package explicitly states that March 11 engineering hardening improved rerun readiness but did not change the scientific state.
 - Fact: `trivy` is intentionally disabled for the remainder of this thread by explicit user instruction; do not schedule further `trivy` actions here.
 
 ## canonical source order
@@ -95,4 +97,4 @@ Strategy context lives in:
 - Should the fresh-rerun launcher eventually replace direct maintenance of `asnn_goose_colab_v15.ipynb`, or is the launcher-plus-env-control split sufficient for Phase 0?
 
 ## last updated
-- 2026-03-11 18:23:23 Europe/Sofia
+- 2026-03-12 13:04:46 Europe/Sofia

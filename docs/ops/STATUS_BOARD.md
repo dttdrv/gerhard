@@ -1,6 +1,6 @@
 # Gerhard Status Board
 
-**As Of**: 2026-03-11  
+**As Of**: 2026-03-12  
 **Autopilot Mode**: Conditional (continue on green, pause on red)
 
 ## Executive Snapshot
@@ -58,6 +58,11 @@
 - The fresh training notebook now copies `outputs/checkpoints/v15_best.pt` into the per-run artifact bundle so the rerun itself produces the next checkpoint evidence.
 - The fresh training path now emits detailed evidence artifacts: `environment.json`, `training_curves.json`, `hardware_stats.json`, `spike_analysis.json`, `validation_tests.json`, `control_suite.json`, `checkpoint_metadata.json`, `figures_index.json`, `detailed_results.json`, `artifact_manifest.json`, plus launcher-copied `executed_training_notebook.ipynb`, `operator_env.json`, and `launcher_bundle_manifest.json`.
 - `tests/test_colab_fresh_rerun_single_cell_notebook.py` now verifies the launcher target and the training notebook’s env-controlled registration/knob surface.
+
+## Supervisor Report Package (2026-03-12)
+- Added `reports/2026/03/phase_b_supervisor_report_2026-03-12.md` as the supervisor-facing narrative built directly from the canonical truth stack plus the latest authoritative run report.
+- Added `reports/2026/03/phase_b_supervisor_report_2026-03-12.html` as the sendable HTML companion for forwarding or print export.
+- The package states the current blocked scientific status, the March 11 hardening work, the no-checkpoint constraint, and the bounded next step of one fresh Colab rerun with the deep evidence bundle.
 
 ## Preflight Adapter Update (2026-03-11)
 - `src/evaluation/spiking_brain.py` now accepts both Hugging Face-style `hidden_states` outputs and repo-native `TeacherModel` `layer_activations` during representation collection.
