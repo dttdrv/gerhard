@@ -10,6 +10,7 @@
 - Fact: `notebooks/asnn_goose_colab_v15.ipynb` is again an active execution target, but only through the launcher and with notebook-side registration disabled by env.
 - Fact: the fresh-rerun path now emits a much more detailed evidence bundle, including environment, training-curve, hardware-stats, spike-analysis, validation-test, control-suite, checkpoint-metadata, figures-index, detailed-results, and manifest artifacts, plus launcher-copied executed-notebook and env snapshots.
 - Fact: `reports/2026/03/phase_b_supervisor_report_2026-03-12.md` and `.html` now exist as the supervisor-facing status package for the current blocked-but-rerun-ready state.
+- Fact: `docs/ops/CONTEXT_HANDOVER_2026-03-15.md` now exists as a dated point-in-time orientation file for the current blocked-but-rerun-ready state.
 - Inference: the next capability increase must come from a fresh rerun that produces a new checkpoint and dossier bundle, not from theorizing about the existing red run.
 
 ## current blocker
@@ -40,6 +41,7 @@
 - Fact: `notebooks/asnn_goose_v15_colab_fresh_rerun_single_cell.ipynb` now exists as the concrete fresh-rerun Colab launcher for the no-checkpoint case.
 - Fact: the launcher now copies `executed_training_notebook.ipynb` and `operator_env.json` into the final run bundle and writes `launcher_bundle_manifest.json`.
 - Fact: the current supervisor package explicitly states that March 11 engineering hardening improved rerun readiness but did not change the scientific state.
+- Fact: the dated context handover file explicitly points the next operator to the canonical truth stack first and the fresh-rerun path second.
 - Fact: `trivy` is intentionally disabled for the remainder of this thread by explicit user instruction; do not schedule further `trivy` actions here.
 
 ## canonical source order
@@ -97,4 +99,4 @@ Strategy context lives in:
 - Should the fresh-rerun launcher eventually replace direct maintenance of `asnn_goose_colab_v15.ipynb`, or is the launcher-plus-env-control split sufficient for Phase 0?
 
 ## last updated
-- 2026-03-12 13:04:46 Europe/Sofia
+- 2026-03-15 21:33:05 Europe/Sofia

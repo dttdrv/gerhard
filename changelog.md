@@ -1,5 +1,19 @@
 # ASNN-Goose Changelog
 
+## 2026-03-15 - Context Handover Snapshot
+
+### Action 1 - Dated context handover file
+**Facts**
+- Added `docs/ops/CONTEXT_HANDOVER_2026-03-15.md` as a dated resume-from-here snapshot built from the canonical truth stack plus the living handoff memory.
+- The handover file explicitly records the current blocked Phase B state, the latest authoritative run (`v15_2026-02-23_200258`), the exact red metrics (`mutual_information=0.0435`, `cka_mean=0.0196`), the trusted execution surfaces, and the bounded next step of one fresh Colab rerun followed by laptop-side dossier registration.
+- The handover file also records what not to do: no theory-only status upgrade, no default use of the checkpoint-gated reset notebook without a checkpoint, no mutation of archived February evidence, and no `trivy` usage in this thread.
+
+**Hypotheses**
+- A dated handover snapshot next to `TIME_CAPSULE.md` will reduce recovery time for the next operator without turning the living memory file into an overgrown historical archive.
+
+**Inferences**
+- `docs/ops/TIME_CAPSULE.md` remains the living memory record, while `docs/ops/CONTEXT_HANDOVER_2026-03-15.md` now serves as a stable point-in-time orientation artifact for this specific state of the repo.
+
 ## 2026-03-11 - Phase 0 Cycle 1: Truth + Gate Drift Alignment
 
 ### Action 1 - Reporting gate hardening
